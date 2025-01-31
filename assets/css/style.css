@@ -1,0 +1,157 @@
+:root {
+    --primary-color: #2980b9;
+    --secondary-color: #ffc107;
+    --danger-color: #dc3545;
+    --dark-bg: #212529;
+    --light-bg: #f2f2f2;
+    --white-color: #ffffff;
+    --padding-small: 8px;
+    --padding-medium: 15px;
+    --padding-large: 20px;
+    --sidebar-width: 250px;
+}
+
+/* Sidebar fixa na lateral esquerda */
+.sidebar {
+    width: var(--sidebar-width); /* Define a largura */
+    height: 100vh; /* Ocupa a altura total da tela */
+    position: fixed; /* Fixa a sidebar na tela */
+    top: 0;
+    left: 0;
+    background-color: var(--dark-bg); /* Cor escura */
+    padding: var(--padding-large);
+    overflow-y: auto; /* Permite rolagem caso o conteúdo ultrapasse a tela */
+}
+
+/* body: Estilos globais */
+body {
+    font-family: Arial, sans-serif;
+    background-color: var(--light-bg);
+    margin: 0;
+    padding: 0;
+}
+
+/* Ajuste para a navbar fixa no topo */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width); /* Mantém alinhado com a sidebar */
+    width: calc(100% - var(--sidebar-width)); /* Ajusta para o tamanho correto */
+    background-color: #343a40;
+    color: var(--white-color);
+    padding: var(--padding-medium);
+    z-index: 1000; /* Garante que a navbar fique sempre visível */
+}
+
+/* Ajuste para deslocar todo o conteúdo para a direita e abaixo da navbar */
+.container {
+    margin-left: var(--sidebar-width); /* Move to the right */
+    padding: var(--padding-large);
+    padding-top: 70px; /* Adjust to not be behind the navbar */
+    width: calc(100% - var(--sidebar-width)); /* Adjust the width of the container */
+    margin-bottom: 20px; /* Add bottom margin */
+}
+
+/* Ajuste para a barra de pesquisa */
+/* Barra de pesquisa */
+.search-bar {
+    position: relative; /* Mantém a posição sem sobreposição */
+    width: calc(100% - 280px); /* Reduzindo um pouco para não ultrapassar */
+    margin-left: 260px; /* Garante que respeite a sidebar */
+    margin-top: 10px;
+    display: flex;
+    gap: 10px; /* Espaço entre elementos */
+}
+
+
+/* Ajuste para alinhar os filtros abaixo da barra de pesquisa */
+.filter-section {
+    margin-top: 15px; /* Espaço adequado */
+    background: var(--white-color);
+    padding: var(--padding-medium);
+    border-radius: 5px;
+    box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between; /* Mantém alinhamento adequado */
+}
+
+/* Estilos para a tabela */
+table {
+    width: 100%; /* Define a tabela para ocupar 100% da largura do container */
+    max-width: 1200px; /* Define uma largura máxima para a tabela */
+    border-collapse: collapse;
+    margin-top: 20px; /* Add space above the table */
+}
+
+/* table, th, td: Bordas */
+table, th, td {
+    border: 1px solid #dddddd;
+}
+
+/* Estilos das células */
+th, td {
+    padding: var(--padding-small);
+    text-align: left;
+}
+
+/* Estilos do cabeçalho da tabela */
+th {
+    background-color: var(--primary-color);
+    color: var(--white-color);
+}
+
+/* Estilizando os botões */
+button.editar {
+    background-color: var(--secondary-color);
+    color: black;
+    border: none;
+    padding: var(--padding-small);
+    cursor: pointer;
+}
+
+button.eliminar {
+    background-color: var(--danger-color);
+    color: var(--white-color);
+    border: none;
+    padding: var(--padding-small);
+    cursor: pointer;
+}
+
+/* Responsividade para telas menores */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 200px; /* Reduz a largura da sidebar */
+    }
+
+    .container {
+        width: calc(100% - 200px);
+        margin-left: 200px;
+        padding-top: 80px; /* Ajuste para telas menores */
+    }
+
+    .navbar {
+        left: 200px;
+        width: calc(100% - 200px);
+    }
+
+    .search-bar {
+        width: calc(100% - 220px);
+        margin-left: 200px;
+    }
+
+    .filter-section {
+        flex-direction: column;
+    }
+}
+
+/* Adjust the card padding */
+.card {
+    padding: var(--padding-large); /* Increase padding inside the card */
+    margin-bottom: 20px; /* Add margin below the card */
+}
+
+/* Adjust form element spacing */
+.mb-3 {
+    margin-bottom: 15px; /* Increase space between form elements */
+}
