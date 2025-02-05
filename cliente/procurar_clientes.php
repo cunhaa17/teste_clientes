@@ -1,52 +1,33 @@
 <?php
-include_once '../includes/db_conexao.php';
+if (isset($_GET['q'])) {
+    $query = htmlspecialchars($_GET['q']);
 
-$search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$colunas_selecionadas = isset($_GET['colunas']) ? $_GET['colunas'] : ['id', 'nome', 'email', 'telefone'];
-$colunas_sql = implode(", ", $colunas_selecionadas);
+    // Conectar ao banco de dados
+    $conn = new mysqli("localhost", "usuario", "senha", "banco");
 
-$sql = "SELECT $colunas_sql FROM Cliente WHERE 1=1";
-$types = '';
-$params = [];
-
-if (!empty($search)) {
-    $search_conditions = [];
-    foreach ($colunas_selecionadas as $coluna) {
-        $search_conditions[] = "$coluna LIKE ?";
+    if ($conn->connect_error) {
+        die("Erro na conexão: " . $conn->connect_error);
     }
-    $sql .= " AND (" . implode(" OR ", $search_conditions) . ")";
-    
-    $search_param = '%' . $search . '%';
-    $params = array_fill(0, count($colunas_selecionadas), $search_param);
-    $types = str_repeat('s', count($colunas_selecionadas));
-}
 
-$sql .= " ORDER BY id DESC";
+    // Buscar os resultados
+    $sql = "SELECT nome FROM clientes WHERE nome LIKE ? LIMIT 10";
+    $stmt = $conn->prepare($sql);
+    $param = "%$query%";
+    $stmt->bind_param("s", $param);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
-$stmt = $conn->prepare($sql);
-if ($stmt === false) {
-    die("Erro na consulta SQL: " . htmlspecialchars($conn->error));
-}
-
-if (!empty($params)) {
-    $stmt->bind_param($types, ...$params);
-}
-
-$stmt->execute();
-$resultado = $stmt->get_result();
-$clientes = $resultado->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
-$conn->close();
-
-foreach ($clientes as $cliente) {
-    echo "<tr>";
-    foreach ($colunas_selecionadas as $coluna) {
-        echo "<td>" . htmlspecialchars($cliente[$coluna] ?? 'N/A', ENT_QUOTES, 'UTF-8') . "</td>";
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            echo "<p>" . htmlspecialchars($row['nome']) . "</p>";
+        }
+    } else {
+        echo "<p>Nenhum resultado encontrado</p>";
     }
-    echo "<td>
-            <a href='editar_cliente.php?id=" . urlencode($cliente['id']) . "' class='btn btn-warning btn-sm'>Editar</a>
-            <a href='eliminar_cliente.php?id=" . urlencode($cliente['id']) . "' class='btn btn-danger btn-sm'>Eliminar</a>
-          </td>";
-    echo "</tr>";
+
+    $stmt->close();
+    $conn->close();
+} else {
+    echo "<p>Erro na requisição</p>";
 }
 ?>

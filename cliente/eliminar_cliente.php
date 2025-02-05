@@ -1,25 +1,33 @@
 <?php
-include '../includes/db_conexao.php';
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-$id = $_GET['id'];
+header('Content-Type: application/json');
+include_once '../includes/db_conexao.php';
 
-// Ensure the ID is an integer to prevent SQL injection
-if (filter_var($id, FILTER_VALIDATE_INT)) {
-    $query = "DELETE FROM cliente WHERE id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $id); // Bind the ID as an integer
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
+    $id = intval($_POST['id']);
 
-    if ($stmt->execute()) {
-        header('Location: clientes.php');
-        exit();
+    error_log("Recebido pedido para eliminar ID: " . $id);
+
+    if ($id > 0) {
+        $query = "DELETE FROM Cliente WHERE id = ?";
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param("i", $id);
+
+        if ($stmt->execute()) {
+            echo json_encode(["status" => "success", "message" => "Cliente eliminado com sucesso!"]);
+        } else {
+            error_log("Erro ao executar DELETE: " . $stmt->error);
+            echo json_encode(["status" => "error", "message" => "Erro ao eliminar cliente."]);
+        }
+
+        $stmt->close();
     } else {
-        echo "Erro ao eliminar cliente: " . mysqli_error($conn);
+        echo json_encode(["status" => "error", "message" => "ID inválido."]);
     }
 } else {
-    echo "ID inválido.";
+    echo json_encode(["status" => "error", "message" => "Requisição inválida."]);
 }
-
-$stmt->close();
-$conn->close();
 ?>
-

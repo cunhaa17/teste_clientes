@@ -1,74 +1,76 @@
-<?php include '../includes/sidebar.php' ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Adicionar Cliente</title>
-    <link rel="stylesheet" href="../assets/css/style.css"> <!-- Inclui o ficheiro CSS para estilos -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"> <!-- Ícones do Material Icons -->
-</head>
-<body>
+<?php
+session_start();
+include_once '../includes/db_conexao.php';
 
-    <!-- Mensagens de erro ou sucesso -->
-    <div class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-md-12">
-                <?php 
-                session_start();
-                if (isset($_SESSION['error'])) {
-                    echo '
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <strong>Erro:</strong> ' . htmlspecialchars($_SESSION['error']) . '
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>';
-                    unset($_SESSION['error']);
-                }
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Process the form data and add the client to the database
+    // ...
 
-                if (isset($_SESSION['success'])) {
-                    echo '
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <strong>Sucesso:</strong> ' . htmlspecialchars($_SESSION['success']) . '
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>';
-                    unset($_SESSION['success']);
-                }
-                ?>
-            </div>
-        </div>
+    if ($success) { // Assuming $success is set to true if the client is added successfully
+        $_SESSION['success'] = 'Cliente adicionado com sucesso!';
+        header('Location: clientes.php');
+        exit();
+    } else {
+        $_SESSION['error'] = 'Erro ao adicionar cliente.';
+    }
+}
 
-        <div class="row justify-content-center">
-            <div class="col-md-12">
-                <div class="container">
-                    <div class="card">
-                        <!-- Cabeçalho do cartão -->
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h4 class="mb-0">Adicionar Cliente</h4>
-                        </div>
-                        <div class="card-body">
-                            <!-- Formulário para adicionar cliente -->
-                            <form action="guardar_cliente.php" method="POST">
-                                <div class="mb-3">
-                                    <label>Nome:</label>
-                                    <input type="text" name="nome" class="form-control" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label>Email:</label>
-                                    <input type="email" name="email" class="form-control" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label>Telefone:</label>
-                                    <input type="tel" name="telefone" class="form-control" pattern="[0-9]{9}" required>
-                                </div>
-                                <button type="submit" class="btn btn-primary">Guardar</button>
-                                <a href="clientes.php" class="btn btn-secondary">Voltar</a>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+$title = 'Adicionar Cliente';
+
+// Your existing code...
+
+// Start output buffering
+ob_start();
+?>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Adicionar Cliente</h1>
+        <a href="clientes.php" class="btn btn-secondary">Voltar</a>
     </div>
 
-    <!-- Script do Bootstrap -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <?php 
+    if (isset($_SESSION['error'])) {
+        echo '
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Erro:</strong> ' . htmlspecialchars($_SESSION['error']) . '
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>';
+        unset($_SESSION['error']);
+    }
+
+    if (isset($_SESSION['success'])) {
+        echo '
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Sucesso:</strong> ' . htmlspecialchars($_SESSION['success']) . '
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>';
+        unset($_SESSION['success']);
+    }
+    ?>
+
+    <div class="card">
+        <div class="card-body">
+            <form action="guardar_cliente.php" method="POST">
+                <div class="mb-3">
+                    <label class="form-label">Nome:</label>
+                    <input type="text" name="nome" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email:</label>
+                    <input type="email" name="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Telefone:</label>
+                    <input type="tel" name="telefone" class="form-control" pattern="[0-9]{9}" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </form>
+        </div>
+    </div>
+</div>
+<?php
+$content = ob_get_clean(); // Capture the output and store it in $content
+
+// Include the layout file
+include '../includes/layout.php';
+?>
