@@ -38,17 +38,24 @@ if (!in_array($ordenar_por, $colunas_permitidas_ordenacao)) {
     $ordenar_por = 'id';
 }
 
-$ordem = ($ordem == 'ASC') ? 'ASC' : 'DESC';
-$order_by_clause = " ORDER BY $ordenar_por $ordem";
-$sql = "SELECT * FROM Cliente WHERE 1=1";
+$ordenar_por = $_GET['ordenar_por'] ?? 'id';
+$ordem = $_GET['ordem'] ?? 'ASC';
+$colunas_permitidas_ordenacao = ['nome', 'email', 'telefone'];
+
+if (!in_array($ordenar_por, $colunas_permitidas_ordenacao)) {
+    $ordenar_por = 'nome';
+}
+
+$ordem = ($ordem === 'ASC') ? 'ASC' : 'DESC';
+$sql = "SELECT id, " . implode(", ", $colunas_selecionadas) . " FROM Cliente WHERE 1=1";
 
 if (!empty($search)) {
-    $sql .= " AND (nome LIKE ? OR email LIKE ? OR telefone LIKE ?)";
-    $search_param = '%' . $search . '%';
-    $stmt = $conn->prepare($sql);
+    $sql .= " AND (nome LIKE ? OR email LIKE ? OR telefone LIKE ? )";
+    $search_param = "%$search%";
+    $stmt = $conn->prepare($sql . " ORDER BY $ordenar_por $ordem");
     $stmt->bind_param("sss", $search_param, $search_param, $search_param);
 } else {
-    $stmt = $conn->prepare($sql);
+    $stmt = $conn->prepare($sql . " ORDER BY $ordenar_por $ordem");
 }
 
 $stmt->execute();
@@ -61,22 +68,6 @@ ob_start();
 ?>
 
 <div class="container py-4">
-    <h1 class="text-center">Lista de Clientes</h1>
-    <?php if (!empty($mensagem)): ?>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            showToast("<?php echo htmlspecialchars($mensagem); ?>", "bg-success");
-        });
-    </script>
-<?php endif; ?>
-
-<?php if (!empty($success_message)): ?>
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        showToast("<?php echo htmlspecialchars($success_message); ?>", "bg-success");
-    });
-</script>
-<?php endif; ?>
 
     <!-- Modal de Confirmação -->
 <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">

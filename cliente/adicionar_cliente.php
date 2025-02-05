@@ -6,14 +6,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Process the form data and add the client to the database
     // ...
 
-    if ($success) { // Assuming $success is set to true if the client is added successfully
-        $_SESSION['success'] = 'Cliente adicionado com sucesso!';
-        header('Location: clientes.php');
-        exit();
-    } else {
-        $_SESSION['error'] = 'Erro ao adicionar cliente.';
-    }
-}
+    $_SESSION['success'] = "Cliente adicionado com sucesso!";
+    header("Location: clientes.php");
+    exit();
+}    
 
 $title = 'Adicionar Cliente';
 

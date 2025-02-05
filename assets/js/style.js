@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('searchInput');
     const resultsContainer = document.querySelector('tbody');
-    const checkboxes = document.querySelectorAll('.form-check-input'); // Get all checkboxes
+    const checkboxes = document.querySelectorAll('.form-check-input'); // Pegando todos os checkboxes
 
     function updateTable() {
         const query = searchInput.value.trim();
@@ -9,8 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
             .filter(checkbox => checkbox.checked)
             .map(checkbox => checkbox.id.replace('check', '').toLowerCase());
 
-        const url = `clientes.php?search=${encodeURIComponent(query)}&` + 
-                    selectedColumns.map(col => `colunas[]=${col}`).join('&');
+        const url = `clientes.php?search=${encodeURIComponent(query)}&colunas=${selectedColumns.join(',')}`;
 
         fetch(url)
             .then(response => {
@@ -26,15 +25,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (newTableBody) {
                     resultsContainer.innerHTML = newTableBody.innerHTML;
+                    updateColumnVisibility(); // Atualiza a exibição das colunas
                 }
-                updateColumnVisibility(); // Atualiza a exibição das colunas
             })
             .catch(error => {
                 console.error('Erro na busca:', error);
                 resultsContainer.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Erro ao buscar dados</td></tr>";
             });
     }
-
+        document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll("th[data-column]").forEach(header => {
+            header.addEventListener("click", function (event) {
+                event.preventDefault();
+                const column = this.getAttribute("data-column");
+                const currentOrder = new URLSearchParams(window.location.search).get("ordem") || "ASC";
+                const newOrder = currentOrder === "ASC" ? "DESC" : "ASC";
+    
+                const url = `clientes.php?search=${encodeURIComponent(document.getElementById('searchInput').value)}&ordenar_por=${column}&ordem=${newOrder}`;
+    
+                fetch(url)
+                    .then(response => response.text())
+                    .then(data => {
+                        const parser = new DOMParser();
+                        const newDoc = parser.parseFromString(data, "text/html");
+                        document.querySelector("tbody").innerHTML = newDoc.querySelector("tbody").innerHTML;
+                    })
+                    .catch(error => console.error("Erro ao ordenar:", error));
+            });
+        });
+    });
+    
     function updateColumnVisibility() {
         const selectedColumns = Array.from(checkboxes)
             .filter(checkbox => checkbox.checked)
@@ -49,9 +69,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (searchInput && resultsContainer) {
-        searchInput.addEventListener('input', updateTable); // Update table on search input
+        searchInput.addEventListener('input', updateTable); // Atualiza tabela ao digitar na pesquisa
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateTable); // Update table on checkbox change
+            checkbox.addEventListener('change', updateTable); // Atualiza tabela ao mudar colunas
         });
     } else {
         console.error("Elemento de pesquisa ou container de resultados não encontrado!");
@@ -59,10 +79,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     updateColumnVisibility(); // Aplica as configurações iniciais ao carregar a página
 });
+
+// Lógica de Eliminação de Cliente
 document.addEventListener("DOMContentLoaded", function () {
     let clienteIdParaEliminar = null;
 
-    // Captura clique no botão de eliminar e abre o modal
     document.querySelectorAll(".btn-eliminar").forEach(button => {
         button.addEventListener("click", function () {
             clienteIdParaEliminar = this.getAttribute("data-id");
@@ -71,7 +92,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Confirmação dentro do modal
     document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
         if (clienteIdParaEliminar) {
             fetch("eliminar_cliente.php", {
@@ -85,12 +105,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 modal.hide();
 
                 if (data.status === "success") {
-                    // Efeito de fade-out antes de remover a linha
                     let row = document.querySelector(`button[data-id='${clienteIdParaEliminar}']`).closest("tr");
                     row.classList.add("table-danger");
                     setTimeout(() => row.remove(), 500);
 
-                    // Exibe Toast de Sucesso
                     showToast("Cliente eliminado com sucesso!", "bg-success");
                 } else {
                     showToast("Erro ao eliminar cliente.", "bg-warning");
@@ -100,47 +118,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    // Função para exibir Toasts personalizados
     function showToast(message, colorClass) {
         let toastElement = document.getElementById("deleteToast");
+        if (!toastElement) return;
+    
         toastElement.querySelector(".toast-body").textContent = message;
-        
-        // Remove classes antigas e adiciona a nova cor
         toastElement.classList.remove("bg-success", "bg-warning", "bg-dark");
         toastElement.classList.add(colorClass);
-
+    
         let toast = new bootstrap.Toast(toastElement);
         toast.show();
     }
-});
-
-document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('searchInput');
-    const resultsContainer = document.querySelector('tbody');
-
-    searchInput.addEventListener('input', function () {
-        const query = searchInput.value.trim();
-        const url = `clientes.php?search=${encodeURIComponent(query)}`;
-
-        fetch(url)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erro ao buscar clientes');
-                }
-                return response.text();
-            })
-            .then(data => {
-                const parser = new DOMParser();
-                const newDoc = parser.parseFromString(data, "text/html");
-                const newTableBody = newDoc.querySelector('tbody');
-
-                if (newTableBody) {
-                    resultsContainer.innerHTML = newTableBody.innerHTML;
-                }
-            })
-            .catch(error => {
-                console.error('Erro na busca:', error);
-                resultsContainer.innerHTML = "<tr><td colspan='5' class='text-center text-danger'>Erro ao buscar dados</td></tr>";
-            });
-    });
-});
+});    

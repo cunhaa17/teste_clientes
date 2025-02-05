@@ -1,5 +1,9 @@
 <?php
-session_start(); // Ensure session is started
+session_start();
+$mensagem = $_SESSION['mensagem'] ?? '';
+$success_message = $_SESSION['success'] ?? '';
+unset($_SESSION['mensagem'], $_SESSION['success']);
+
 require_once '../includes/db_conexao.php';
 $title = 'Editar Cliente'; 
 
@@ -7,6 +11,8 @@ $title = 'Editar Cliente';
 if (!$conn) {
     die("Erro: Conexão com o banco de dados falhou");
 }
+
+
 
 if (isset($_GET['id'])) {
     $id = mysqli_real_escape_string($conn, $_GET['id']);
