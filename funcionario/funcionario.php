@@ -11,7 +11,7 @@ header("Expires: 0");
 include_once '../includes/db_conexao.php';
 
 if (isset($_GET['clear'])) {
-    header("Location: funcionarios.php");
+    header("Location: funcionario.php");
     exit();
 }
 
@@ -85,7 +85,7 @@ ob_start();
             <input type="text" name="search" class="form-control me-2" placeholder="Pesquisar funcionários..." 
                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
                    style="width: 100%;" id="searchInput">
-            <a href="funcionarios.php?clear=1" class="btn btn-secondary ms-2">Limpar</a>
+            <a href="funcionario.php?clear=1" class="btn btn-secondary ms-2">Limpar</a>
         </form>
         <!-- Dropdown with Options -->
         <div class="dropdown ms-2">
@@ -168,7 +168,7 @@ ob_start();
             <?php foreach ($funcionarios as $funcionario): ?>
                 <tr>
                     <?php foreach ($colunas_selecionadas as $coluna): ?>
-                        <td data-column="<?php echo $coluna; ?>"><?php echo htmlspecialchars($funcionario[$coluna]); ?></td>
+                        <td data-column="<?php echo $coluna; ?>"><?php echo htmlspecialchars($funcionario[$coluna] ?? ''); ?></td>
                     <?php endforeach; ?>
                     <td>
                         <a href="editar_funcionario.php?id=<?php echo urlencode($funcionario['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
