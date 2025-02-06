@@ -1,3 +1,6 @@
+<?php
+$base_url = "../"; // Replace with your actual domain
+?>
 <!DOCTYPE html>
 <html lang="pt">
 <head>
@@ -17,10 +20,10 @@
                 <a href="<?php echo $base_url; ?>" class="nav-link text-white">Início</a>
             </li>
             <li class="nav-item">
-                <a href="clientes.php" class="nav-link text-white">Clientes</a>
+                <a href="<?php echo $base_url; ?>cliente/clientes.php" class="nav-link text-white">Clientes</a>
             </li>
             <li class="nav-item">
-                <a href="configuracoes.php" class="nav-link text-white">Configurações</a>
+                <a href="<?php echo $base_url; ?>funcionario/funcionario.php" class="nav-link text-white">Funcionarios</a>
             </li>
         </ul>
     </div>
