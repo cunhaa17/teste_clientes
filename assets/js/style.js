@@ -107,7 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (data.status === "success") {
                     let row = document.querySelector(`button[data-id='${clienteIdParaEliminar}']`).closest("tr");
                     row.classList.add("table-danger");
-                    setTimeout(() => row.remove(), 500);
+                    setTimeout(() => row.remove(), 500);    
 
                     showToast("Cliente eliminado com sucesso!", "bg-success");
                 } else {
@@ -130,3 +130,6 @@ document.addEventListener("DOMContentLoaded", function () {
         toast.show();
     }
 });    
+
+// Acaba clientes
+//Começa Serviços

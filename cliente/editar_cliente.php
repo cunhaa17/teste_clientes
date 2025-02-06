@@ -7,13 +7,6 @@ unset($_SESSION['mensagem'], $_SESSION['success']);
 require_once '../includes/db_conexao.php';
 $title = 'Editar Cliente'; 
 
-// Simplified connection check
-if (!$conn) {
-    die("Erro: Conexão com o banco de dados falhou");
-}
-
-
-
 if (isset($_GET['id'])) {
     $id = mysqli_real_escape_string($conn, $_GET['id']);
     $query = "SELECT * FROM cliente WHERE id = '$id'";
@@ -92,8 +85,6 @@ ob_start();
 </div>
 
 <?php
-$content = ob_get_clean(); // Capture the output and store it in $content
-
-// Include the layout file
+$content = ob_get_clean();
 include '../includes/layout.php';
 ?>

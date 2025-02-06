@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($stmt->execute()) {
         $_SESSION['success'] = 'Cliente adicionado com sucesso!';
-        header('Location: clientes.php');
+        header("Location: clientes.php");
         exit();
     } else {
         $_SESSION['error'] = 'Erro ao adicionar cliente. Tente novamente.';
