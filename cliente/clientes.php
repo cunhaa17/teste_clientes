@@ -156,10 +156,6 @@ ob_start();
 </tbody>
 
     </table>
-
-    <?php if (empty($clientes)): ?>
-        <p class="text-center">Nenhum cliente encontrado.</p>
-    <?php endif; ?>
 </div>
 
 <script src="../assets/js/style.js"></script>
