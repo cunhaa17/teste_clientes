@@ -9,17 +9,14 @@ include_once '../includes/db_conexao.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     $id = intval($_POST['id']);
 
-    error_log("Recebido pedido para eliminar ID: " . $id);
-
     if ($id > 0) {
-        $query = "DELETE FROM funcionarios WHERE id = ?";
+        $query = "DELETE FROM funcionario WHERE id = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param("i", $id);
 
         if ($stmt->execute()) {
             echo json_encode(["status" => "success", "message" => "Funcionário eliminado com sucesso!"]);
         } else {
-            error_log("Erro ao executar DELETE: " . $stmt->error);
             echo json_encode(["status" => "error", "message" => "Erro ao eliminar funcionário."]);
         }
 

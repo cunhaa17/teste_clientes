@@ -7,6 +7,8 @@ session_start();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $nome = trim($_POST['nome']);
     $email = trim($_POST['email']);
+    $morada = trim($_POST['morada']);
+    $localidade = trim($_POST['localidade']);
     $telefone1 = trim($_POST['telefone1']);
     $telefone2 = trim($_POST['telefone2']);
     $cargo = trim($_POST['cargo']);
@@ -32,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Insere o novo funcionario no banco de dados
-    $query = "INSERT INTO funcionario (nome, email, telefone1, telefone2, cargo) VALUES (?, ?, ?, ?, ?)";
+    $query = "INSERT INTO funcionario (nome, email, morada, localidade, telefone1, telefone2, cargo) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($query);
-    $stmt->bind_param("sssss", $nome, $email, $telefone1, $telefone2, $cargo);
+    $stmt->bind_param("sssssss", $nome, $email, $morada, $localidade, $telefone1, $telefone2, $cargo);
 
     if ($stmt->execute()) {
         $_SESSION['success'] = 'Funcionário adicionado com sucesso!';

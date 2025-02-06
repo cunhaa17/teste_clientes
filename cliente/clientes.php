@@ -180,6 +180,7 @@ ob_start();
             toast.show();
         }
     });
+
 </script>
 
 <?php
