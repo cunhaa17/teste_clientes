@@ -7,6 +7,8 @@ $base_url = "../"; // Replace with your actual domain
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($title) ? $title : 'Dashboard'; ?></title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="d-flex vh-100">
@@ -17,13 +19,24 @@ $base_url = "../"; // Replace with your actual domain
         <h2 class="fs-4 mb-3">Sidebar</h2>
         <ul class="nav flex-column">
             <li class="nav-item">
-                <a href="<?php echo $base_url; ?>" class="nav-link text-white">Início</a>
+                <a href="<?php echo $base_url; ?>" class="nav-link text-white">
+                <i class="bi bi-house-door me-2"></i>Início</a>
             </li>
             <li class="nav-item">
-                <a href="<?php echo $base_url; ?>cliente/clientes.php" class="nav-link text-white">Clientes</a>
+                <a href="<?php echo $base_url; ?>cliente/clientes.php" class="nav-link text-white">
+                <i class="bi bi-people-fill me-2"></i>Clientes</a>
             </li>
             <li class="nav-item">
-                <a href="<?php echo $base_url; ?>funcionario/funcionario.php" class="nav-link text-white">Funcionarios</a>
+                <a href="<?php echo $base_url; ?>funcionario/funcionario.php" class="nav-link text-white">
+                <i class="bi bi-person-badge me-2"></i>Funcionarios</a>
+            </li>
+            <li class="nav-item">
+                <a href="<?php echo $base_url; ?>servico/servico.php" class="nav-link text-white">
+                <i class="bi bi-tools me-2"></i>Servico</a>
+            </li>
+            <li class="nav-item">
+                <a href="<?php echo $base_url; ?>servico/servico.php" class="nav-link text-white">
+                <i class="bi bi-calendar-check me-2"></i>Horarios</a>
             </li>
         </ul>
     </div>

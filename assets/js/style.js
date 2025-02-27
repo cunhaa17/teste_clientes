@@ -72,7 +72,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
         if (itemIdToDelete) {
-            const url = window.location.pathname.includes("funcionario") ? "eliminar_funcionario.php" : "eliminar_cliente.php";
+            let url;
+            if (window.location.pathname.includes("funcionario")) {
+                url = "eliminar_funcionario.php";
+            } else if (window.location.pathname.includes("servico")) {
+                url = "eliminar_servico.php";
+            } else if (window.location.pathname.includes("cliente")) {
+                url = "eliminar_cliente.php";
+            }
+
             fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -109,3 +117,90 @@ document.addEventListener('DOMContentLoaded', function () {
         toast.show();
     }
 });
+
+import React, { useState, useEffect } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import Modal from "react-modal";
+
+Modal.setAppElement("#root");
+
+const Calendar = () => {
+  const [events, setEvents] = useState([]);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/events")
+      .then((res) => res.json())
+      .then((data) => setEvents(data));
+  }, []);
+
+  const handleEventClick = (clickInfo) => {
+    setSelectedEvent(clickInfo.event);
+    setModalIsOpen(true);
+  };
+
+  const handleDateSelect = (selectInfo) => {
+    const title = prompt("Digite o nome do funcionário:");
+    if (title) {
+      const newEvent = {
+        title,
+        start: selectInfo.startStr,
+        end: selectInfo.endStr,
+      };
+      setEvents([...events, newEvent]);
+      fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newEvent),
+      });
+    }
+  };
+
+  const handleEventDrop = (dropInfo) => {
+    const updatedEvent = {
+      id: dropInfo.event.id,
+      start: dropInfo.event.startStr,
+      end: dropInfo.event.endStr,
+    };
+    fetch(`/api/events/${updatedEvent.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedEvent),
+    });
+  };
+
+  const handleDelete = () => {
+    if (selectedEvent) {
+      setEvents(events.filter((event) => event.id !== selectedEvent.id));
+      fetch(`/api/events/${selectedEvent.id}`, { method: "DELETE" });
+      setModalIsOpen(false);
+    }
+  };
+
+  return (
+    <div>
+      <FullCalendar
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView="timeGridWeek"
+        editable={true}
+        selectable={true}
+        events={events}
+        select={handleDateSelect}
+        eventClick={handleEventClick}
+        eventDrop={handleEventDrop}
+      />
+      <Modal isOpen={modalIsOpen} onRequestClose={() => setModalIsOpen(false)}>
+        <h2>Editar Evento</h2>
+        <p>{selectedEvent?.title}</p>
+        <button onClick={handleDelete}>Deletar</button>
+        <button onClick={() => setModalIsOpen(false)}>Fechar</button>
+      </Modal>
+    </div>
+  );
+};
+
+export default Calendar;
