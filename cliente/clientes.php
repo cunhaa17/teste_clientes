@@ -69,24 +69,24 @@ ob_start();
 
 <div class="container py-4">
 
-    <!-- Modal de Confirmação -->
-<div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Eliminação</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                Tem certeza que deseja eliminar este cliente?
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+        <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Eliminação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Tem certeza que deseja eliminar este cliente?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
     <div class="mb-4 d-flex align-items-center">
         <form method="GET" action="clientes.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
@@ -172,16 +172,7 @@ ob_start();
 </div>
 
 <script src="../assets/js/style.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var toastEl = document.getElementById('successToast');
-        if (toastEl) {
-            var toast = new bootstrap.Toast(toastEl);
-            toast.show();
-        }
-    });
 
-</script>
 
 <?php
 $content = ob_get_clean();

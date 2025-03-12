@@ -35,7 +35,7 @@ $base_url = "../"; // Replace with your actual domain
                 <i class="bi bi-tools me-2"></i>Servico</a>
             </li>
             <li class="nav-item">
-                <a href="<?php echo $base_url; ?>servico/servico.php" class="nav-link text-white">
+                <a href="<?php echo $base_url; ?>horarios/horarios.php" class="nav-link text-white">
                 <i class="bi bi-calendar-check me-2"></i>Horarios</a>
             </li>
         </ul>

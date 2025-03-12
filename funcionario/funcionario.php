@@ -181,15 +181,7 @@ ob_start();
 </div>
 
 <script src="../assets/js/style.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var toastEl = document.getElementById('successToast');
-        if (toastEl) {
-            var toast = new bootstrap.Toast(toastEl);
-            toast.show();
-        }
-    });
-</script>
+
 
 <?php
 $content = ob_get_clean();
