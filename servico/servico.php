@@ -86,50 +86,51 @@ ob_start();
         </div>
     </div>
 
-    <!-- Search and Controls Section -->
     <div class="mb-4 d-flex align-items-center">
-        <form method="GET" action="servico.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
-            <input type="text" name="search" class="form-control me-2" placeholder="Pesquisar servico..." 
-                   value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
-                   style="width: 100%;" id="searchInput">
-            <a href="servico.php?clear=1" class="btn btn-secondary ms-2">Limpar</a>
-        </form>
+    <form method="GET" action="servico.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
+        <input type="text" name="search" class="form-control form-control-lg me-2" placeholder="Pesquisar serviço..." 
+               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
+               id="searchInput">
+        <a href="servico.php?clear=1" class="btn btn-secondary btn-lg ms-2">Limpar</a>
+    </form>
 
-        <!-- Column Selection -->
-        <div class="dropdown ms-2">
-            <button class="btn btn-outline-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                Selecionar Colunas
-            </button>
-            <a href="adicionar_servico.php" class="btn btn-success ms-2">Adicionar Serviço</a>
-            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkDescricao" <?php echo in_array('descricao', $colunas_selecionadas) ? 'checked' : ''; ?>> Descrição
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkPreco" <?php echo in_array('preco', $colunas_selecionadas) ? 'checked' : ''; ?>> Preço
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkDuracao" <?php echo in_array('duracao', $colunas_selecionadas) ? 'checked' : ''; ?>> Duração
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkCategoria" <?php echo in_array('categoria', $colunas_selecionadas) ? 'checked' : ''; ?>> Categoria
-                    </label>
-                </li>
-            </ul>
-        </div>
+    <!-- Column Selection -->
+    <div class="dropdown ms-2">
+        <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+            Selecionar Colunas
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <li>
+                <label class="dropdown-item">
+                    <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item">
+                    <input type="checkbox" class="form-check-input me-2" id="checkDescricao" <?php echo in_array('descricao', $colunas_selecionadas) ? 'checked' : ''; ?>> Descrição
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item">
+                    <input type="checkbox" class="form-check-input me-2" id="checkPreco" <?php echo in_array('preco', $colunas_selecionadas) ? 'checked' : ''; ?>> Preço
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item">
+                    <input type="checkbox" class="form-check-input me-2" id="checkDuracao" <?php echo in_array('duracao', $colunas_selecionadas) ? 'checked' : ''; ?>> Duração
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item">
+                    <input type="checkbox" class="form-check-input me-2" id="checkCategoria" <?php echo in_array('categoria', $colunas_selecionadas) ? 'checked' : ''; ?>> Categoria
+                </label>
+            </li>
+        </ul>
     </div>
+
+    <!-- Botão para adicionar serviço -->
+    <a href="adicionar_servico.php" class="btn btn-success btn-lg ms-2">Adicionar Serviço</a>
+</div>
 
     <!-- Success Toast -->
     <?php if ($success_message): ?>
@@ -146,36 +147,36 @@ ob_start();
     <?php endif; ?>
 
     <!-- Services Table -->
-    <table class="table table-striped">
-        <thead class="table-dark">
+    <table class="table table-striped table-hover fs-5">
+    <thead class="table-dark">
+        <tr>
+            <?php foreach ($colunas_selecionadas as $coluna): ?>
+                <th data-column="<?php echo $coluna; ?>">
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
+                        <?php echo ucfirst($coluna); ?>
+                        <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
+                            <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
+                        <?php endif; ?>
+                    </a>
+                </th>
+            <?php endforeach; ?>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($servico as $servicos): ?>
             <tr>
                 <?php foreach ($colunas_selecionadas as $coluna): ?>
-                    <th data-column="<?php echo $coluna; ?>">
-                        <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>">
-                            <?php echo ucfirst($coluna); ?>
-                            <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
-                                <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
-                            <?php endif; ?>
-                        </a>
-                    </th>
+                    <td><?php echo htmlspecialchars($servicos[$coluna] ?? ''); ?></td>
                 <?php endforeach; ?>
-                <th>Ações</th>
+                <td>
+                    <a href="editar_servico.php?id=<?php echo urlencode($servicos['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
+                    <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $servicos['id']; ?>">Eliminar</button>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($servico as $servicos): ?>
-                <tr>
-                    <?php foreach ($colunas_selecionadas as $coluna): ?>
-                        <td data-column="<?php echo $coluna; ?>"><?php echo htmlspecialchars($servicos[$coluna] ?? ''); ?></td>
-                    <?php endforeach; ?>
-                    <td>
-                        <a href="editar_servico.php?id=<?php echo urlencode($servicos['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
-                        <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $servicos['id']; ?>">Eliminar</button>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+        <?php endforeach; ?>
+    </tbody>
+</table>
 </div>
 
 <!-- Scripts -->

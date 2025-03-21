@@ -81,59 +81,64 @@ ob_start();
     </div>
 
     <div class="mb-4 d-flex align-items-center">
-        <form method="GET" action="funcionarios.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
-            <input type="text" name="search" class="form-control me-2" placeholder="Pesquisar funcionários..." 
-                   value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
-                   style="width: 100%;" id="searchInput">
-            <a href="funcionario.php?clear=1" class="btn btn-secondary ms-2">Limpar</a>
-        </form>
-        <!-- Dropdown with Options -->
-        <div class="dropdown ms-2">
-            <button class="btn btn-outline-dark dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-                Selecionar Colunas
-            </button>
+    <form method="GET" action="funcionarios.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
+        <input type="text" name="search" class="form-control me-2 w-100 fs-5" placeholder="Pesquisar funcionários..." 
+               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
+               id="searchInput">
+        <a href="funcionarios.php?clear=1" class="btn btn-secondary ms-2 fs-5">Limpar</a>
+    </form>
 
-            <!-- Button to Add Employee -->
-            <a href="adicionar_funcionario.php" class="btn btn-success ms-2">Adicionar Funcionário</a>
-            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkMorada" <?php echo in_array('morada', $colunas_selecionadas) ? 'checked' : ''; ?>> Morada
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkLocalidade" <?php echo in_array('localidade', $colunas_selecionadas) ? 'checked' : ''; ?>> Localidade
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone1" <?php echo in_array('telefone1', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 1
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone2" <?php echo in_array('telefone2', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 2
-                    </label>
-                </li>
-                <li>
-                    <label class="dropdown-item">
-                        <input type="checkbox" class="form-check-input me-2" id="checkCargo" <?php echo in_array('cargo', $colunas_selecionadas) ? 'checked' : ''; ?>> Cargo
-                    </label>
-                </li>
-            </ul>
-        </div>
+    <!-- Dropdown com filtros -->
+    <div class="dropdown ms-2">
+        <button class="btn btn-outline-dark dropdown-toggle fs-5" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+            Selecionar Colunas
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkEmail" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkMorada" <?php echo in_array('morada', $colunas_selecionadas) ? 'checked' : ''; ?>> Morada
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkLocalidade" <?php echo in_array('localidade', $colunas_selecionadas) ? 'checked' : ''; ?>> Localidade
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkTelefone1" <?php echo in_array('telefone1', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 1
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkTelefone2" <?php echo in_array('telefone2', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 2
+                </label>
+            </li>
+            <li>
+                <label class="dropdown-item fs-5">
+                    <input type="checkbox" class="form-check-input me-2" id="checkCargo" <?php echo in_array('cargo', $colunas_selecionadas) ? 'checked' : ''; ?>> Cargo
+                </label>
+            </li>
+        </ul>
     </div>
+
+    <!-- Botão para adicionar funcionário -->
+    <a href="adicionar_funcionario.php" class="btn btn-success ms-2 fs-5">Adicionar Funcionário</a>
+
+    <!-- Botão para imprimir -->
+    <button class="btn btn-primary ms-2 fs-5" onclick="window.print()">Imprimir</button>
+</div>
+
 
     <?php if ($success_message): ?>
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
@@ -148,36 +153,36 @@ ob_start();
         </div>
     <?php endif; ?>
 
-    <table class="table table-striped">
-        <thead class="table-dark">
+    <table class="table table-striped table-hover fs-5">
+    <thead class="table-dark">
+        <tr>
+            <?php foreach ($colunas_selecionadas as $coluna): ?>
+                <th data-column="<?php echo $coluna; ?>">
+                    <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
+                        <?php echo ucfirst($coluna); ?>
+                        <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
+                            <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
+                        <?php endif; ?>
+                    </a>
+                </th>
+            <?php endforeach; ?>
+            <th>Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($funcionarios as $funcionario): ?>
             <tr>
                 <?php foreach ($colunas_selecionadas as $coluna): ?>
-                    <th data-column="<?php echo $coluna; ?>">
-                        <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>">
-                            <?php echo ucfirst($coluna); ?>
-                            <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
-                                <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
-                            <?php endif; ?>
-                        </a>
-                    </th>
+                    <td><?php echo htmlspecialchars($funcionario[$coluna] ?? ''); ?></td>
                 <?php endforeach; ?>
-                <th>Ações</th>
+                <td>
+                    <a href="editar_funcionario.php?id=<?php echo urlencode($funcionario['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
+                    <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $funcionario['id']; ?>">Eliminar</button>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($funcionarios as $funcionario): ?>
-                <tr>
-                    <?php foreach ($colunas_selecionadas as $coluna): ?>
-                        <td data-column="<?php echo $coluna; ?>"><?php echo htmlspecialchars($funcionario[$coluna] ?? ''); ?></td>
-                    <?php endforeach; ?>
-                    <td>
-                        <a href="editar_funcionario.php?id=<?php echo urlencode($funcionario['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
-                        <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $funcionario['id']; ?>">Eliminar</button>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+        <?php endforeach; ?>
+    </tbody>
+</table>
 </div>
 
 <script src="../assets/js/style.js"></script>
