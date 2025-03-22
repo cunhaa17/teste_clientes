@@ -8,6 +8,12 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
+if (!isset($_SESSION['utilizador_id'])) {
+    header("Location: login.php");
+    exit();
+}
+
+$title = "Início";
 include_once 'includes/db_conexao.php';
 
 // Consultas ao banco de dados
@@ -82,6 +88,8 @@ while ($row = mysqli_fetch_assoc($result_status_reservas)) {
             break;
     }
 }
+
+ob_start();
 ?>
 
 <div class="container py-4">
@@ -96,6 +104,7 @@ while ($row = mysqli_fetch_assoc($result_status_reservas)) {
             </div>
         </div>
 
+        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
         <!-- Card Serviços Ativos -->
         <div class="col-md-3">
             <div class="card bg-success text-white shadow">
@@ -119,6 +128,7 @@ while ($row = mysqli_fetch_assoc($result_status_reservas)) {
                 </div>
             </div>
         </div>
+        <?php } ?>
     </div>
 
     <!-- Gráfico e Reservas na mesma linha -->
@@ -148,14 +158,16 @@ while ($row = mysqli_fetch_assoc($result_status_reservas)) {
             </table>
         </div>
 
+        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
         <!-- Gráfico de Reservas por Status -->
         <div class="col-md-6 mt-4">
             <canvas id="graficoReservasStatus"></canvas>
         </div>
+        <?php } ?>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
 <script>
     var ctxStatus = document.getElementById('graficoReservasStatus').getContext('2d');
     var graficoStatus = new Chart(ctxStatus, {
@@ -201,6 +213,7 @@ while ($row = mysqli_fetch_assoc($result_status_reservas)) {
         }
     });
 </script>
+<?php } ?>
 
 <?php
 $content = ob_get_clean();

@@ -8,7 +8,20 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
+$title = "Clientes";
 include_once '../includes/db_conexao.php';
+
+// Verifica se a sessão está iniciada corretamente
+if (!isset($_SESSION['utilizador_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Verifica se o usuário é do tipo admin ou funcionario
+if ($_SESSION['utilizador_tipo'] !== 'admin' && $_SESSION['utilizador_tipo'] !== 'funcionario') {
+    header("Location: ../index.php");
+    exit();
+}
 
 if (isset($_GET['clear'])) {
     header("Location: clientes.php");
@@ -69,7 +82,7 @@ ob_start();
 
 <div class="container py-4">
 
-        <!-- Modal de Confirmação -->
+    <!-- Modal de Confirmação -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -89,44 +102,46 @@ ob_start();
     </div>
 
     <div class="mb-4 d-flex align-items-center">
-    <form method="GET" action="clientes.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
-        <input type="text" name="search" class="form-control me-2 w-100 fs-5" placeholder="Pesquisar clientes..." 
-               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
-               id="searchInput">
-        <a href="clientes.php?clear=1" class="btn btn-secondary ms-2 fs-5">Limpar</a>
-    </form>
+        <form method="GET" action="clientes.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
+            <input type="text" name="search" class="form-control me-2 w-100 fs-5" placeholder="Pesquisar clientes..." 
+                   value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
+                   id="searchInput">
+            <a href="clientes.php?clear=1" class="btn btn-secondary ms-2 fs-5">Limpar</a>
+        </form>
 
-    <!-- Dropdown com filtros -->
-    <div class="dropdown ms-2">
-        <button class="btn btn-outline-dark dropdown-toggle fs-5" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-            Selecionar Colunas
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkEmail" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkTelefone" <?php echo in_array('telefone', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone
-                </label>
-            </li>
-        </ul>
+        <!-- Dropdown com filtros -->
+        <div class="dropdown ms-2">
+            <button class="btn btn-outline-dark dropdown-toggle fs-5" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                Selecionar Colunas
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                <li>
+                    <label class="dropdown-item fs-5">
+                        <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
+                    </label>
+                </li>
+                <li>
+                    <label class="dropdown-item fs-5">
+                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
+                    </label>
+                </li>
+                <li>
+                    <label class="dropdown-item fs-5">
+                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone" <?php echo in_array('telefone', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone
+                    </label>
+                </li>
+            </ul>
+        </div>
+
+        <?php 
+        if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+        <!-- Button to add client -->
+        <a href="adicionar_cliente.php" class="btn btn-success ms-2 fs-5">Adicionar Cliente</a>
+        <?php } ?>
+
+        <!-- Botão para imprimir -->
+        <button class="btn btn-primary ms-2 fs-5" onclick="window.print()">Imprimir</button>
     </div>
-
-    <!-- Botão para adicionar cliente -->
-    <a href="adicionar_cliente.php" class="btn btn-success ms-2 fs-5">Adicionar Cliente</a>
-
-    <!-- Botão para imprimir -->
-    <button class="btn btn-primary ms-2 fs-5" onclick="window.print()">Imprimir</button>
-</div>
-
 
     <?php if ($success_message): ?>
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
@@ -142,40 +157,43 @@ ob_start();
     <?php endif; ?>
 
     <table class="table table-striped table-hover fs-5">
-    <thead class="table-dark">
-        <tr>
-            <?php foreach ($colunas_selecionadas as $coluna): ?>
-                <th data-column="<?php echo $coluna; ?>">
-                <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                        <?php echo ucfirst($coluna); ?>
-                        <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
-                            <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
-                        <?php endif; ?>
-                    </a>
-                </th>
-            <?php endforeach; ?>
-            <th class="fs-5">Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($clientes as $cliente): ?>
+        <thead class="table-dark">
             <tr>
                 <?php foreach ($colunas_selecionadas as $coluna): ?>
-                    <td class="fs-5" data-column="<?php echo $coluna; ?>"><?php echo htmlspecialchars($cliente[$coluna]); ?></td>
+                    <th data-column="<?php echo $coluna; ?>">
+                        <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
+                            <?php echo ucfirst($coluna); ?>
+                            <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
+                                <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
+                            <?php endif; ?>
+                        </a>
+                    </th>
                 <?php endforeach; ?>
-                <td class="fs-5">
-                    <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
-                    <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $cliente['id']; ?>">Eliminar</button>
-                </td>
+                <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                <th class="fs-5">Ações</th>
+                <?php } ?>
             </tr>
-        <?php endforeach; ?>
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            <?php foreach ($clientes as $cliente): ?>
+                <tr>
+                    <?php foreach ($colunas_selecionadas as $coluna): ?>
+                        <td class="fs-5" data-column="<?php echo $coluna; ?>"><?php echo htmlspecialchars($cliente[$coluna]); ?></td>
+                    <?php endforeach; ?>
+                    <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                    <td class="fs-5">
+                        <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
+                        <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $cliente['id']; ?>">Eliminar</button>
+                    </td>
+                    <?php } ?>
+                </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 
 </div>
 
 <script src="../assets/js/style.js"></script>
-
 
 <?php
 $content = ob_get_clean();

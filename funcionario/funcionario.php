@@ -1,5 +1,7 @@
 <?php
+
 session_start();
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -8,6 +10,19 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
+// Verifica se a sessão está iniciada corretamente
+if (!isset($_SESSION['utilizador_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Verifica se o usuário é do tipo admin
+if ($_SESSION['utilizador_tipo'] !== 'admin') {
+    header("Location: ../index.php");
+    exit();
+}
+
+$title = "Funcionários";
 include_once '../includes/db_conexao.php';
 
 if (isset($_GET['clear'])) {

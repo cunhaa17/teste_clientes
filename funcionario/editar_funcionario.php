@@ -4,6 +4,18 @@ $mensagem = $_SESSION['mensagem'] ?? '';
 $success_message = $_SESSION['success'] ?? '';
 unset($_SESSION['mensagem'], $_SESSION['success']);
 
+// Verifica se a sessão está iniciada corretamente
+if (!isset($_SESSION['utilizador_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Verifica se o usuário é do tipo admin
+if ($_SESSION['utilizador_tipo'] !== 'admin') {
+    header("Location: ../index.php");
+    exit();
+}
+
 require_once '../includes/db_conexao.php';
 $title = 'Editar Funcionário'; 
 

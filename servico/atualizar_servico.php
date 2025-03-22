@@ -6,6 +6,18 @@ include '../includes/layout.php';
 // Inicia uma sessão para manter informações durante o uso do sistema
 session_start();
 
+// Verifica se a sessão está iniciada corretamente
+if (!isset($_SESSION['utilizador_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Verifica se o usuário é do tipo admin
+if ($_SESSION['utilizador_tipo'] !== 'admin') {
+    header("Location: ../index.php");
+    exit();
+}
+
 // Verifica se o ID foi fornecido no POST e se é um número inteiro válido
 if (!isset($_POST['id']) || !filter_var($_POST['id'], FILTER_VALIDATE_INT)) {
     // Encerra o script com uma mensagem caso o ID seja inválido

@@ -8,7 +8,6 @@ $base_url = "/dashboard_pap/"; // Substitua pelo nome correto da pasta do projet
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($title) ? $title : 'Dashboard'; ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .sidebar {
@@ -28,15 +27,21 @@ $base_url = "/dashboard_pap/"; // Substitua pelo nome correto da pasta do projet
         .sidebar .nav-link i {
             font-size: 1.5rem;
         }
+        .sidebar .logout {
+            color: red;
+        }
+        .sidebar .logout i {
+            color: red;
+        }
     </style>
 </head>
 <body class="d-flex vh-100">
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <!-- Aqui os toasts serão adicionados dinamicamente -->
 </div>
-    <div class="sidebar p-4 overflow-y-auto">
+    <div class="sidebar p-4 overflow-y-auto d-flex flex-column">
         <h2 class="fs-4 mb-3">Sidebar</h2>
-        <ul class="nav flex-column">
+        <ul class="nav flex-column flex-grow-1">
             <li class="nav-item">
                 <a href="<?php echo $base_url; ?>index.php" class="nav-link text-white">
                 <i class="bi bi-house-door me-2"></i>Início</a>
@@ -45,6 +50,11 @@ $base_url = "/dashboard_pap/"; // Substitua pelo nome correto da pasta do projet
                 <a href="<?php echo $base_url; ?>cliente/clientes.php" class="nav-link text-white">
                 <i class="bi bi-people-fill me-2"></i>Clientes</a>
             </li>
+            <li class="nav-item">
+                <a href="<?php echo $base_url; ?>reservas/reservas.php" class="nav-link text-white">
+                <i class="bi bi-calendar3 me-2"></i>Reservas</a>
+            </li>
+            <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
             <li class="nav-item">
                 <a href="<?php echo $base_url; ?>funcionario/funcionario.php" class="nav-link text-white">
                 <i class="bi bi-person-badge me-2"></i>Funcionarios</a>
@@ -57,9 +67,16 @@ $base_url = "/dashboard_pap/"; // Substitua pelo nome correto da pasta do projet
                 <a href="<?php echo $base_url; ?>horarios/horarios.php" class="nav-link text-white">
                 <i class="bi bi-calendar-check me-2"></i>Horarios</a>
             </li>
+            <?php } ?>
+            <li class="nav-item mt-auto">
+                <a href="<?php echo $base_url; ?>logout.php" class="nav-link logout">
+                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                </a>
+            </li>
         </ul>
     </div>
     <div class="main d-flex flex-column flex-grow-1 p-5">
+        <h1><?php echo isset($title) ? $title : ''; ?></h1>
         <?php echo isset($content) ? $content : ''; ?>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -74,7 +91,5 @@ $base_url = "/dashboard_pap/"; // Substitua pelo nome correto da pasta do projet
         </div>
     </div>
 </div>
-
-
 </body>
 </html>

@@ -8,6 +8,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
+$title = "Serviços";
 include_once '../includes/db_conexao.php';
 
 // Initial setup and redirects
@@ -181,8 +182,6 @@ ob_start();
 
 <!-- Scripts -->
 <script src="../assets/js/style.js"></script>
-
-
 
 <?php
 $content = ob_get_clean();

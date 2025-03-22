@@ -2,6 +2,18 @@
 require_once '../includes/db_conexao.php';
 session_start();
 
+// Verifica se a sessão está iniciada corretamente
+if (!isset($_SESSION['utilizador_id'])) {
+    header("Location: ../login.php");
+    exit();
+}
+
+// Verifica se o usuário é do tipo admin
+if ($_SESSION['utilizador_tipo'] !== 'admin') {
+    header("Location: ../index.php");
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $servico_id = trim($_POST['servico_id']); // ID da categoria (serviço)
     $nome = trim($_POST['nome']);

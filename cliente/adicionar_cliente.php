@@ -1,19 +1,51 @@
 <?php
 session_start();
+
+// Verifica se a sessão está iniciada corretamente
+if (!isset($_SESSION['utilizador_id'])) {
+    // Redireciona para a página de login, usando o caminho correto
+    header("Location: ../login.php");
+    exit();
+}
+
+// Verifica se o usuário é do tipo admin
+if ($_SESSION['utilizador_tipo'] !== 'admin') {
+    header("Location: ../index.php");
+    exit();
+}
+
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Process the form data and add the client to the database
-    // ...
+    $nome = trim($_POST['nome']);
+    $email = trim($_POST['email']);
+    $telefone = trim($_POST['telefone']);
 
-    $_SESSION['success'] = "Cliente adicionado com sucesso!";
-    header("Location: clientes.php");
+    if (empty($nome) || empty($email) || empty($telefone)) {
+        $_SESSION['error'] = "Todos os campos são obrigatórios.";
+        header("Location: adicionar_cliente.php");
+        exit();
+    }
+
+    // Insere o cliente na base de dados
+    $sql = "INSERT INTO clientes (nome, email, telefone) VALUES (?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("sss", $nome, $email, $telefone);
+
+    if ($stmt->execute()) {
+        $_SESSION['success'] = "Cliente adicionado com sucesso!";
+    } else {
+        $_SESSION['error'] = "Erro ao adicionar cliente: " . $stmt->error;
+    }
+
+    $stmt->close();
+    $conn->close();
+
+    header("Location: index.php");
     exit();
-}    
+}
 
 $title = 'Adicionar Cliente';
-
-// Your existing code...
 
 // Start output buffering
 ob_start();
@@ -46,7 +78,7 @@ ob_start();
 
     <div class="card">
         <div class="card-body">
-            <form action="guardar_cliente.php" method="POST">
+            <form action="adicionar_cliente.php" method="POST">
                 <div class="mb-3">
                     <label class="form-label">Nome:</label>
                     <input type="text" name="nome" class="form-control" required>
