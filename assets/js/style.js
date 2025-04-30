@@ -1,16 +1,16 @@
+document.addEventListener('DOMContentLoaded', function () {
+    // Exibir Toast de Sucesso por 5 segundos
+    var toastEl = document.getElementById('successToast');
+    if (toastEl) {
+        var toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+    }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        // Exibir Toast de Sucesso por 5 segundos
-        var toastEl = document.getElementById('successToast');
-        if (toastEl) {
-            var toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-            toast.show();
-        }
+    const searchInput = document.getElementById('searchInput');
+    const resultsContainer = document.querySelector('tbody');
+    const checkboxes = document.querySelectorAll('.form-check-input');
 
-        const searchInput = document.getElementById('searchInput');
-        const resultsContainer = document.querySelector('tbody');
-        const checkboxes = document.querySelectorAll('.form-check-input');
-
+    if (searchInput && resultsContainer) {
         function updateTable() {
             const query = searchInput.value.trim();
             const selectedColumns = Array.from(checkboxes)
@@ -55,30 +55,31 @@
             });
         }
 
-        if (searchInput && resultsContainer) {
-            searchInput.addEventListener('input', updateTable);
-            checkboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', updateTable);
-            });
-        } else {
-            console.error("Elemento de pesquisa ou container de resultados não encontrado!");
-        }
+        searchInput.addEventListener('input', updateTable);
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateTable);
+        });
+    } else {
+        console.error("Elemento de pesquisa ou container de resultados não encontrado!");
+    }
 
-        updateColumnVisibility();
+    // Lógica de Exclusão
+    let itemIdToDelete = null;
 
-        // Lógica de Exclusão
-        let itemIdToDelete = null;
-
-        document.querySelectorAll(".btn-eliminar").forEach(button => {
-            button.addEventListener("click", function () {
-                itemIdToDelete = this.getAttribute("data-id");
-                let modalElement = document.getElementById("confirmDeleteModal");
+    document.querySelectorAll(".btn-eliminar").forEach(button => {
+        button.addEventListener("click", function () {
+            itemIdToDelete = this.getAttribute("data-id");
+            let modalElement = document.getElementById("confirmDeleteModal");
+            if (modalElement) {
                 let modal = new bootstrap.Modal(modalElement);
                 modal.show();
-            });
+            }
         });
+    });
 
-        document.getElementById("confirmDeleteBtn").addEventListener("click", function () {
+    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener("click", function () {
             if (itemIdToDelete) {
                 let url;
                 if (window.location.pathname.includes("funcionario")) {
@@ -112,17 +113,63 @@
                 .catch(error => showToast("Erro na requisição.", "bg-dark"));
             }
         });
+    }
 
-        function showToast(message, colorClass) {
-            let toastElement = document.getElementById("deleteToast");
-            if (!toastElement) return;
+    function showToast(message, colorClass) {
+        let toastElement = document.getElementById("deleteToast");
+        if (!toastElement) return;
 
-            toastElement.querySelector(".toast-body").textContent = message;
-            toastElement.classList.remove("bg-success", "bg-warning", "bg-dark");
-            toastElement.classList.add(colorClass);
+        toastElement.querySelector(".toast-body").textContent = message;
+        toastElement.classList.remove("bg-success", "bg-warning", "bg-dark");
+        toastElement.classList.add(colorClass);
 
-            let toast = new bootstrap.Toast(toastElement);
-            toast.show();
-        }
-    });
+        let toast = new bootstrap.Toast(toastElement);
+        toast.show();
+    }
 
+    // **Correção do filtro por data**
+    const dateHeader = document.getElementById("dateHeader");
+    const datePickerModal = document.getElementById("datePickerModal");
+    const datepicker = document.getElementById("datepicker");
+    const reservasTableBody = document.getElementById("reservasTableBody");
+
+    if (dateHeader && datePickerModal && datepicker && reservasTableBody) {
+        // Quando clicar no cabeçalho "Data" com a lupa, abre o modal do calendário
+        dateHeader.addEventListener("click", function () {
+            const modal = new bootstrap.Modal(datePickerModal);
+            modal.show();
+        });
+
+        // Inicializa o Datepicker no campo de input
+        $(datepicker).datepicker({
+            format: "yyyy-mm-dd",
+            autoclose: true,
+            todayHighlight: true
+        });
+
+        // Evento ao clicar em "Aplicar"
+        document.getElementById("applyDate").addEventListener("click", function () {
+            const selectedDate = datepicker.value.trim(); // Obtém a data selecionada
+            if (selectedDate) {
+                const rows = reservasTableBody.querySelectorAll("tr");
+                rows.forEach(row => {
+                    const dateCell = row.cells[2].textContent.trim(); // Terceira célula contém a data (ajustar índice se necessário)
+                    
+                    // Converte a data da célula para YYYY-MM-DD
+                    const formattedDate = dateCell.split("/").reverse().join("-"); 
+
+                    // Exibe ou oculta as linhas conforme a data selecionada
+                    row.style.display = formattedDate === selectedDate ? "" : "none";
+                });
+
+                // Fecha o modal corretamente
+                const modal = bootstrap.Modal.getInstance(datePickerModal);
+                modal.hide();
+            } else {
+                alert("Por favor, selecione uma data.");
+            }
+        });
+    } else {
+        console.error("Elementos necessários para o filtro por data não foram encontrados!");
+    }
+}); 

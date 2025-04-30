@@ -92,6 +92,22 @@ while ($row = mysqli_fetch_assoc($result_status_reservas)) {
 ob_start();
 ?>
 
+<head>
+    <!-- CSS do Datepicker -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
+
+    <!-- jQuery (necessário para o Datepicker) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- JS do Datepicker -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/js/bootstrap-datepicker.min.js"></script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
 <div class="container py-4">
     <div class="row">
         <!-- Card Clientes -->
@@ -114,106 +130,87 @@ ob_start();
                 </div>
             </div>
         </div>
-
-        <!-- Card Taxa de Ocupação -->
-        <div class="col-md-3">
-            <div class="card bg-info text-white shadow">
-                <div class="card-body">
-                    <h5 class="card-title">Taxa de Ocupação</h5>
-                    <div class="progress">
-                        <div class="progress-bar bg-dark" role="progressbar" style="width: <?php echo $taxa_ocupacao; ?>%;">
-                            <?php echo round($taxa_ocupacao, 1); ?>%
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         <?php } ?>
     </div>
 
     <!-- Gráfico e Reservas na mesma linha -->
     <div class="row mt-4">
-        <!-- Próximas Reservas -->
-        <div class="col-md-6">
+        <div class="col-md-12">
             <h4>Próximas Reservas</h4>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Cliente</th>
-                        <th>Serviço</th>
-                        <th>Data</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($reserva = mysqli_fetch_assoc($result_reservas)) { ?>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
                         <tr>
-                            <td><?php echo $reserva['cliente']; ?></td>
-                            <td><?php echo $reserva['servico']; ?></td>
-                            <td><?php echo date('d/m/Y', strtotime($reserva['data'])); ?></td>
-                            <td><?php echo ucfirst($reserva['status']); ?></td>
+                            <th>Cliente</th>
+                            <th>Serviço</th>
+                            <th id="dateHeader" style="cursor: pointer;">
+                                Data <i class="fas fa-search" title="Filtrar por Data"></i>
+                            </th>
+                            <th>Status</th>
                         </tr>
-                    <?php } ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody id="reservasTableBody">
+                        <?php while ($reserva = mysqli_fetch_assoc($result_reservas)) { ?>
+                            <tr>
+                                <td><?php echo $reserva['cliente']; ?></td>
+                                <td><?php echo $reserva['servico']; ?></td>
+                                <td><?php echo date('d/m/Y', strtotime($reserva['data'])); ?></td>
+                                <td><?php echo ucfirst($reserva['status']); ?></td>
+                            </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
-        <!-- Gráfico de Reservas por Status -->
-        <div class="col-md-6 mt-4">
-            <canvas id="graficoReservasStatus"></canvas>
-        </div>
-        <?php } ?>
     </div>
 </div>
 
-<?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+<!-- Modal para seleção de data -->
+<div class="modal fade" id="datePickerModal" tabindex="-1" aria-labelledby="datePickerModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="datePickerModalLabel">Selecionar Data</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="datepicker">Escolha uma data:</label>
+                <input type="text" id="datepicker" class="form-control">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" id="applyDate" class="btn btn-primary">Aplicar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    var ctxStatus = document.getElementById('graficoReservasStatus').getContext('2d');
-    var graficoStatus = new Chart(ctxStatus, {
-        type: 'line',
-        data: {
-            labels: <?php echo json_encode($meses_labels); ?>,
-            datasets: [
-                {
-                    label: 'Confirmadas',
-                    data: <?php echo json_encode($dados_confirmadas); ?>,
-                    backgroundColor: 'rgba(40, 167, 69, 0.2)',
-                    borderColor: 'rgba(40, 167, 69, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Pendentes',
-                    data: <?php echo json_encode($dados_pendentes); ?>,
-                    backgroundColor: 'rgba(255, 193, 7, 0.2)',
-                    borderColor: 'rgba(255, 193, 7, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Concluídas',
-                    data: <?php echo json_encode($dados_concluidas); ?>,
-                    backgroundColor: 'rgba(23, 162, 184, 0.2)',
-                    borderColor: 'rgba(23, 162, 184, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Canceladas',
-                    data: <?php echo json_encode($dados_canceladas); ?>,
-                    backgroundColor: 'rgba(220, 53, 69, 0.2)',
-                    borderColor: 'rgba(220, 53, 69, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true }
-            }
-        }
+    $(document).ready(function() {
+        $('#datepicker').datepicker({
+            format: 'dd/mm/yyyy', // Set the desired date format
+            autoclose: true // Close the datepicker after selection
+        });
+
+        // When clicking the date header, show the modal
+        $('#dateHeader').on('click', function() {
+            $('#datePickerModal').modal('show');
+        });
+
+        // Apply date filter
+        $('#applyDate').on('click', function() {
+            const selectedDate = $('#datepicker').val();
+            const rows = $('#reservasTableBody tr');
+
+            rows.each(function() {
+                const dateCell = $(this).find('td:nth-child(3)').text().trim(); // Get the date cell
+                $(this).toggle(dateCell === selectedDate);
+            });
+
+            $('#datePickerModal').modal('hide');
+        });
     });
 </script>
-<?php } ?>
 
 <?php
 $content = ob_get_clean();

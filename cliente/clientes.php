@@ -11,18 +11,6 @@ header("Expires: 0");
 $title = "Clientes";
 include_once '../includes/db_conexao.php';
 
-// Verifica se a sessão está iniciada corretamente
-if (!isset($_SESSION['utilizador_id'])) {
-    header("Location: ../login.php");
-    exit();
-}
-
-// Verifica se o usuário é do tipo admin ou funcionario
-if ($_SESSION['utilizador_tipo'] !== 'admin' && $_SESSION['utilizador_tipo'] !== 'funcionario') {
-    header("Location: ../index.php");
-    exit();
-}
-
 if (isset($_GET['clear'])) {
     header("Location: clientes.php");
     exit();
@@ -133,9 +121,8 @@ ob_start();
             </ul>
         </div>
 
-        <?php 
-        if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
-        <!-- Button to add client -->
+        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+        <!-- Botão para adicionar cliente -->
         <a href="adicionar_cliente.php" class="btn btn-success ms-2 fs-5">Adicionar Cliente</a>
         <?php } ?>
 
