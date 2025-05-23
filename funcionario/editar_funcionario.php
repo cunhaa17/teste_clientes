@@ -63,7 +63,6 @@ ob_start();
 ?>
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="fs-3 mb-3"><?php echo isset($title) ? $title : 'Funcionário'; ?></h1>
         <a href="funcionario.php" class="btn btn-secondary">Voltar</a>
     </div>
 

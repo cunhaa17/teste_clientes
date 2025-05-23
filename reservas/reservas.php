@@ -138,21 +138,53 @@ $stmt->close();
 ob_start();
 ?>
 
+<style>
+.dropdown-menu-end {
+    right: 0;
+    left: auto;
+}
+.dropdown-menu {
+    margin-top: 0;
+}
+/* Custom: Dropdown opens to the right */
+.dropdown-menu-side {
+    left: 100% !important;
+    top: 0 !important;
+    right: auto !important;
+    margin-top: 0 !important;
+    margin-left: 0.1rem;
+    min-width: 10rem;
+    position: absolute;
+}
+.btn-group {
+    position: relative;
+}
+</style>
+
 <div class="container py-4">
     <!-- Modal de Confirmação de Exclusão -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Exclusão</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
+                <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title" id="confirmDeleteLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Atenção: Eliminação de Reserva
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    Tem certeza que deseja excluir esta reserva?
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3 mb-3">Tem certeza que deseja eliminar esta reserva?</h4>
+                    <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Excluir</button>
+                <div class="modal-footer border-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn" style="border-radius: 8px;">
+                        <i class="bi bi-trash me-2"></i>Eliminar
+                    </button>
                 </div>
             </div>
         </div>
@@ -404,9 +436,9 @@ ob_start();
                             
                             <td>
                                 <!-- Ações -->
-                                <div class="btn-group">
+                                <div class="btn-group dropend">
                                     <a href="editar_reserva.php?id=<?php echo $reserva['id']; ?>" class="btn btn-warning btn-sm">Editar</a>
-                                    <button type="button" class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $reserva['id']; ?>">Excluir</button>
+                                    <button type="button" class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $reserva['id']; ?>">Eliminar</button>
                                     
                                     <!-- Dropdown para alteração de status -->
                                     <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -432,56 +464,6 @@ ob_start();
     </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Manipulação da seleção de colunas
-    const checkboxes = document.querySelectorAll('.dropdown-menu input[type="checkbox"]');
-    checkboxes.forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-            const selectedColumns = [];
-            checkboxes.forEach(function(cb) {
-                if (cb.checked) {
-                    selectedColumns.push(cb.id.replace('check', '').toLowerCase());
-                }
-            });
-            if (selectedColumns.length > 0) {
-                const url = new URL(window.location.href);
-                url.searchParams.set('colunas', selectedColumns.join(','));
-                window.location.href = url.toString();
-            }
-        });
-    });
-
-    // Confirmar exclusão
-    const btnEliminar = document.querySelectorAll('.btn-eliminar');
-    const confirmDeleteModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-    
-    let reservaId;
-    
-    btnEliminar.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            reservaId = this.getAttribute('data-id');
-            confirmDeleteModal.show();
-        });
-    });
-    
-    confirmDeleteBtn.addEventListener('click', function() {
-        window.location.href = 'excluir_reserva.php?id=' + reservaId;
-    });
-
-    // Alterar status
-    const statusLinks = document.querySelectorAll('.alter-status');
-    statusLinks.forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const id = this.getAttribute('data-id');
-            const status = this.getAttribute('data-status');
-            window.location.href = 'alterar_status_reserva.php?id=' + id + '&status=' + status;
-        });
-    });
-});
-</script>
 
 <?php
 $content = ob_get_clean();

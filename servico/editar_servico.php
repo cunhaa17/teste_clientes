@@ -1,8 +1,8 @@
 <?php
 session_start();
-$mensagem = $_SESSION['mensagem'] ?? '';
-$success_message = $_SESSION['success'] ?? '';
-unset($_SESSION['mensagem'], $_SESSION['success']);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Verifica se a sessão está iniciada corretamente
 if (!isset($_SESSION['utilizador_id'])) {
@@ -17,90 +17,124 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 }
 
 require_once '../includes/db_conexao.php';
-$title = 'Editar Serviço'; 
+$title = 'Editar Serviço';
 
-if (isset($_GET['id'])) {
-    $id = mysqli_real_escape_string($conn, $_GET['id']);
-    $query = "SELECT * FROM servico_subtipo WHERE id = '$id'";
-    $result = mysqli_query($conn, $query);
-    $servico = mysqli_fetch_assoc($result);
+if (!isset($_GET['id'])) {
+    header("Location: servico.php");
+    exit();
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $id = mysqli_real_escape_string($conn, $_POST['id']);
-    $nome = mysqli_real_escape_string($conn, $_POST['nome']);
-    $descricao = mysqli_real_escape_string($conn, $_POST['descricao']); 
-    $preco = mysqli_real_escape_string($conn, $_POST['preco']);
-    $duracao = mysqli_real_escape_string($conn, $_POST['duracao']);
+$id = intval($_GET['id']);
 
-    // Check for duplicates
-    $query = "SELECT * FROM servico_subtipo WHERE (nome = ?) AND id != ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("si", $nome, $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+// Buscar informações do serviço
+$query = "SELECT * FROM servico WHERE id = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$result = $stmt->get_result();
+$servico = $result->fetch_assoc();
 
-    if ($result->num_rows > 0) {
-        $_SESSION['error'] = 'O serviço ja existe!';
+if (!$servico) {
+    header("Location: servico.php");
+    exit();
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $nome = trim($_POST['nome']);
+
+    // Verifica se os campos obrigatórios foram preenchidos
+    if (empty($nome)) {
+        $_SESSION['error'] = 'Por favor, preencha o nome do serviço.';
     } else {
-        $query = "UPDATE servico_subtipo SET nome = '$nome', descricao = '$descricao', preco = '$preco' , duracao = '$duracao'  WHERE id = '$id'";
-        
-        if(mysqli_query($conn, $query)) {
-            $_SESSION['success'] = 'Serviço atualizado com sucesso!';
-            header('Location: servico.php');
-            exit();
+        // Verifica se já existe um serviço com o mesmo nome
+        $check_query = "SELECT id FROM servico WHERE nome = ? AND id != ?";
+        $check_stmt = $conn->prepare($check_query);
+        $check_stmt->bind_param("si", $nome, $id);
+        $check_stmt->execute();
+        $check_result = $check_stmt->get_result();
+
+        if ($check_result->num_rows > 0) {
+            $_SESSION['error'] = 'Já existe um serviço com este nome.';
         } else {
-            $erro = "Erro ao atualizar: " . mysqli_error($conn);
+            // Atualiza o serviço
+            $update_query = "UPDATE servico SET nome = ? WHERE id = ?";
+            $update_stmt = $conn->prepare($update_query);
+            $update_stmt->bind_param("si", $nome, $id);
+
+            if ($update_stmt->execute()) {
+                $_SESSION['success'] = 'Serviço atualizado com sucesso!';
+                header("Location: servico.php");
+                exit();
+            } else {
+                $_SESSION['error'] = '❌ Erro ao atualizar serviço. Tente novamente.';
+            }
+            $update_stmt->close();
         }
+        $check_stmt->close();
     }
 }
 
-// Start output buffering
 ob_start();
 ?>
+
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="fs-3 mb-3"><?php echo isset($title) ? $title : 'Serviço'; ?></h1>
         <a href="servico.php" class="btn btn-secondary">Voltar</a>
     </div>
 
     <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-danger"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?php 
+            echo $_SESSION['error'];
+            unset($_SESSION['error']);
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
     <?php endif; ?>
 
     <div class="card">
         <div class="card-body">
-            <form method="POST">
-                <input type="hidden" name="id" value="<?php echo $servico['id']; ?>">
-                
+            <form method="POST" action="editar_servico.php?id=<?php echo $id; ?>">
                 <div class="mb-3">
-                    <label class="form-label">Nome</label>
-                    <input type="text" name="nome" class="form-control" value="<?php echo $servico['nome']; ?>" required>
+                    <label for="nome" class="form-label">Nome do Serviço *</label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($servico['nome']); ?>" required>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Descrição</label>
-                    <input type="text" name="descricao" class="form-control" value="<?php echo $servico['descricao']; ?>" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Preço</label>
-                    <input type="float" name="preco" class="form-control" value="<?php echo $servico['preco']; ?>" required>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Duração</label>
-                    <input type="int" name="duracao" class="form-control" value="<?php echo $servico['duracao']; ?>" required>
-                </div>
-
-                <div class="text-end">
-                    <a href="servico.php" class="btn btn-secondary me-2">Cancelar</a>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                </div>
+                <button type="submit" class="btn btn-primary">Atualizar Serviço</button>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Sucesso!</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                <p class="mt-3 mb-0">Serviço atualizado com sucesso!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Verifica se há mensagem de sucesso na sessão
+    <?php if (isset($_SESSION['success'])): ?>
+        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+        successModal.show();
+        <?php unset($_SESSION['success']); ?>
+    <?php endif; ?>
+});
+</script>
 
 <?php
 $content = ob_get_clean();

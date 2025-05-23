@@ -53,41 +53,6 @@ $total_clientes = mysqli_fetch_assoc($result_clientes)['total'];
 $total_servicos = mysqli_fetch_assoc($result_servicos)['total'];
 $taxa_ocupacao = mysqli_fetch_assoc($result_ocupacao)['taxa'];
 
-// Dados do gráfico de faturamento
-$meses = [];
-$valores = [];
-while ($row = mysqli_fetch_assoc($result_faturamento)) {
-    $meses[] = $row['mes'];
-    $valores[] = $row['total'];
-}
-
-// Processamento dos dados do gráfico de status das reservas
-$meses_labels = range(1, 12); // Janeiro a Dezembro
-$dados_confirmadas = array_fill(0, 12, 0);
-$dados_pendentes = array_fill(0, 12, 0);
-$dados_concluidas = array_fill(0, 12, 0);
-$dados_canceladas = array_fill(0, 12, 0);
-
-while ($row = mysqli_fetch_assoc($result_status_reservas)) {
-    $mes = $row['mes'] - 1; // Ajuste do índice para array (0-based)
-    $status = strtolower($row['status']);
-    $total = $row['total'];
-    
-    switch ($status) {
-        case 'confirmada':
-            $dados_confirmadas[$mes] = $total;
-            break;
-        case 'pendente':
-            $dados_pendentes[$mes] = $total;
-            break;
-        case 'concluida':
-            $dados_concluidas[$mes] = $total;
-            break;
-        case 'cancelada':
-            $dados_canceladas[$mes] = $total;
-            break;
-    }
-}
 
 ob_start();
 ?>

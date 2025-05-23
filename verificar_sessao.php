@@ -9,7 +9,7 @@ if (!isset($_SESSION['usuario_id'])) {
 $pagina = basename($_SERVER['PHP_SELF']);
 $restricoes = [
     'adicionar_cliente.php' => 'admin',
-    'gerir_utilizadores.php' => 'admin'
+    'gerir_adms.php' => 'admin'
 ];
 
 if (isset($restricoes[$pagina]) && $_SESSION['usuario_tipo'] !== $restricoes[$pagina]) {

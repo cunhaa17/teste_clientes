@@ -20,7 +20,6 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-$title = "Gestão de Agenda de Funcionários";
 include_once '../includes/db_conexao.php';
 
 // Mensagens de feedback
@@ -96,7 +95,7 @@ ob_start();
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Gestão de Agenda de Funcionários</h1>
-        <a href="adicionar_agenda.php" class="btn btn-success">Adicionar Novo Horário</a>
+        <a href="adicionar_horario.php" class="btn btn-success">Adicionar Novo Horário</a>
     </div>
     
     <?php if ($mensagem): ?>
@@ -113,7 +112,7 @@ ob_start();
             <h5>Filtros</h5>
         </div>
         <div class="card-body">
-            <form method="GET" action="agenda_funcionarios.php" class="row g-3">
+            <form method="GET" action="horarios.php" class="row g-3">
                 <div class="col-md-6">
                     <label for="funcionario_id" class="form-label">Funcionário</label>
                     <select name="funcionario_id" id="funcionario_id" class="form-select">
@@ -131,7 +130,7 @@ ob_start();
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary me-2">Filtrar</button>
-                    <a href="agenda_funcionarios.php" class="btn btn-secondary">Limpar</a>
+                    <a href="horarios.php" class="btn btn-secondary">Limpar</a>
                 </div>
             </form>
         </div>
@@ -180,8 +179,8 @@ ob_start();
                                     </td>
                                     <td>
                                         <div class="btn-group">
-                                            <a href="editar_agenda.php?id=<?php echo $agenda['id']; ?>" class="btn btn-sm btn-warning">Editar</a>
-                                            <a href="#" class="btn btn-sm btn-danger btn-excluir" data-id="<?php echo $agenda['id']; ?>">Excluir</a>
+                                            <a href="editar_horario.php?id=<?php echo $agenda['id']; ?>" class="btn btn-sm btn-warning">Editar</a>
+                                            <button class="btn btn-sm btn-danger btn-eliminar" data-id="<?php echo $agenda['id']; ?>">Eliminar</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -196,18 +195,27 @@ ob_start();
 
 <!-- Modal de Confirmação de Exclusão -->
 <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-labelledby="modalConfirmDeleteLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalConfirmDeleteLabel">Confirmar Exclusão</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
+            <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
+                <h5 class="modal-title" id="modalConfirmDeleteLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Atenção: Eliminação de Horário
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                Tem certeza que deseja excluir este horário da agenda?
+            <div class="modal-body text-center py-4">
+                <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
+                <h4 class="mt-3 mb-3">Tem certeza que deseja eliminar este horário?</h4>
+                <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <a href="#" id="btnConfirmDelete" class="btn btn-danger">Excluir</a>
+            <div class="modal-footer border-0 justify-content-center pb-4">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <a href="#" id="btnConfirmDelete" class="btn btn-danger px-4" style="border-radius: 8px;">
+                    <i class="bi bi-trash me-2"></i>Eliminar
+                </a>
             </div>
         </div>
     </div>
@@ -219,12 +227,42 @@ document.addEventListener('DOMContentLoaded', function() {
     const modal = new bootstrap.Modal(document.getElementById('modalConfirmDelete'));
     const btnConfirmDelete = document.getElementById('btnConfirmDelete');
     
-    document.querySelectorAll('.btn-excluir').forEach(function(btn) {
+    document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const id = this.getAttribute('data-id');
-            btnConfirmDelete.href = 'agenda_funcionarios.php?action=delete&id=' + id;
+            btnConfirmDelete.setAttribute('data-id', id);
             modal.show();
+        });
+    });
+
+    // Função para eliminar horário via AJAX
+    btnConfirmDelete.addEventListener('click', function(e) {
+        e.preventDefault();
+        const id = this.getAttribute('data-id');
+        
+        fetch('eliminar_horario.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'id=' + id
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Recarrega a página após eliminação bem-sucedida
+                window.location.reload();
+            } else {
+                alert('Erro ao eliminar horário: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao processar a requisição');
+        })
+        .finally(() => {
+            modal.hide();
         });
     });
 });

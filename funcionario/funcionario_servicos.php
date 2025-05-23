@@ -20,8 +20,8 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-$title = "Associar Funcionários a Serviços";
 include_once '../includes/db_conexao.php';
+$title = 'Associar Funcionários a Serviços';
 
 // Mensagens de feedback
 $mensagem = isset($_SESSION['mensagem']) ? $_SESSION['mensagem'] : '';
@@ -144,7 +144,6 @@ ob_start();
 ?>
 
 <div class="container py-4">
-    <h2 class="mb-4">Associar Funcionários a Serviços</h2>
     
     <?php if ($mensagem): ?>
         <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem); ?></div>
@@ -270,7 +269,7 @@ ob_start();
     <?php endif; ?>
     
     <div class="mt-4">
-        <a href="funcionarios.php" class="btn btn-secondary">Voltar para Lista de Funcionários</a>
+        <a href="funcionario.php" class="btn btn-secondary">Voltar para Lista de Funcionários</a>
     </div>
 </div>
 

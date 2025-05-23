@@ -59,8 +59,6 @@ ob_start();
 ?>
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="fs-3 mb-3"><?php echo isset($title) ? $title : 'Cliente'; ?></h1>
-        <a href="clientes.php" class="btn btn-secondary">Voltar</a>
     </div>
 
     <?php if (isset($_SESSION['error'])): ?>

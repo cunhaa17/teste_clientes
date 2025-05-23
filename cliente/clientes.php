@@ -16,8 +16,19 @@ if (isset($_GET['clear'])) {
     exit();
 }
 
-$mensagem = isset($_SESSION['mensagem']) ? $_SESSION['mensagem'] : '';
-$success_message = isset($_SESSION['success']) ? $_SESSION['success'] : '';
+
+if (isset($_SESSION['mensagem'])) {
+    $mensagem = $_SESSION['mensagem'];
+} else {
+    $mensagem = '';
+}
+
+if (isset($_SESSION['success'])) {
+    $success_message = $_SESSION['success'];
+} else {
+    $success_message = '';
+}
+
 unset($_SESSION['mensagem']);
 unset($_SESSION['success']);
 
@@ -72,18 +83,27 @@ ob_start();
 
     <!-- Modal de Confirmação -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="confirmDeleteLabel">Confirmar Eliminação</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
+                <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title" id="confirmDeleteLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Atenção: Eliminação de Cliente
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    Tem certeza que deseja eliminar este cliente?
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3 mb-3">Tem certeza que deseja eliminar este cliente?</h4>
+                    <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+                <div class="modal-footer border-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn" style="border-radius: 8px;">
+                        <i class="bi bi-trash me-2"></i>Eliminar
+                    </button>
                 </div>
             </div>
         </div>

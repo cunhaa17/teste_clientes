@@ -27,8 +27,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Verifica se o email ou telefone já existem no banco de dados
+    $query = "SELECT * FROM cliente WHERE email = ? OR telefone = ?";
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param("ss", $email, $telefone);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $_SESSION['error'] = 'O email ou telefone já estão registados.';
+        header('Location: adicionar_cliente.php');
+        exit();
+    }
+
     // Insere o cliente na base de dados
-    $sql = "INSERT INTO clientes (nome, email, telefone) VALUES (?, ?, ?)";
+    $sql = "INSERT INTO cliente (nome, email, telefone) VALUES (?, ?, ?)";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("sss", $nome, $email, $telefone);
 
@@ -41,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->close();
     $conn->close();
 
-    header("Location: index.php");
+    header("Location: clientes.php");
     exit();
 }
 
@@ -52,7 +65,6 @@ ob_start();
 ?>
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">Adicionar Cliente</h1>
         <a href="clientes.php" class="btn btn-secondary">Voltar</a>
     </div>
 

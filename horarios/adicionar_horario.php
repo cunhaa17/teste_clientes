@@ -210,8 +210,8 @@ ob_start();
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Adicionar Horário de Funcionário</h1>
-        <a href="agenda_funcionarios.php" class="btn btn-secondary">Voltar</a>
+        
+        <a href="horarios.php" class="btn btn-secondary">Voltar</a>
     </div>
     
     <?php if (isset($errors) && !empty($errors)): ?>
@@ -242,7 +242,7 @@ ob_start();
             <div class="tab-content" id="horarioTabContent">
                 <!-- Formulário de Horário Normal -->
                 <div class="tab-pane fade show active" id="normal" role="tabpanel" aria-labelledby="normal-tab">
-                    <form method="POST" action="">
+                    <form method="POST" action="./guardar_horario.php">
                         <input type="hidden" name="tipo" value="normal">
                         
                         <div class="mb-3">
@@ -343,7 +343,7 @@ ob_start();
                 
                 <!-- Formulário de Horário Específico -->
                 <div class="tab-pane fade" id="especifico" role="tabpanel" aria-labelledby="especifico-tab">
-                    <form method="POST" action="">
+                    <form method="POST" action="./guardar_horario.php">
                         <input type="hidden" name="tipo" value="especifico">
                         
                         <div class="mb-3">
@@ -383,7 +383,7 @@ ob_start();
                 
                 <!-- Formulário de Folga/Ausência -->
                 <div class="tab-pane fade" id="folga" role="tabpanel" aria-labelledby="folga-tab">
-                    <form method="POST" action="">
+                    <form method="POST" action="./guardar_horario.php">
                         <input type="hidden" name="tipo" value="folga">
                         
                         <div class="mb-3">

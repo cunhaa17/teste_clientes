@@ -88,6 +88,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     url = "eliminar_servico.php";
                 } else if (window.location.pathname.includes("cliente")) {
                     url = "eliminar_cliente.php";
+                } else if (window.location.pathname.includes("reservas")) {
+                    url = "eliminar_reserva.php";
                 }
 
                 fetch(url, {
@@ -171,5 +173,139 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     } else {
         console.error("Elementos necessários para o filtro por data não foram encontrados!");
+    }
+
+    // Handle subservice expansion
+    document.querySelectorAll('.btn-expand').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var servicoId = this.getAttribute('data-servico-id');
+            var row = document.getElementById('subservicos-' + servicoId);
+            var contentDiv = row.querySelector('.subservicos-content');
+
+            if (row.style.display === 'none') {
+                // Fetch subservices via AJAX
+                fetch('get_subtipos.php?servico_id=' + servicoId)
+                    .then(response => response.text())
+                    .then(html => {
+                        contentDiv.innerHTML = html;
+                        row.style.display = '';
+                        this.textContent = '-';
+                        
+                        // Add event listeners for delete buttons
+                        let subservicoIdToDelete = null;
+                        
+                        document.querySelectorAll('.btn-eliminar-subservico').forEach(function(deleteBtn) {
+                            deleteBtn.addEventListener('click', function() {
+                                subservicoIdToDelete = this.getAttribute('data-id');
+                                let modalElement = document.getElementById('confirmDeleteSubservicoModal');
+                                let modal = new bootstrap.Modal(modalElement);
+                                modal.show();
+                            });
+                        });
+
+                        // Handle subservice deletion confirmation
+                        const confirmDeleteSubservicoBtn = document.getElementById('confirmDeleteSubservicoBtn');
+                        if (confirmDeleteSubservicoBtn) {
+                            confirmDeleteSubservicoBtn.addEventListener('click', function() {
+                                if (subservicoIdToDelete) {
+                                    var formData = new FormData();
+                                    formData.append('id', subservicoIdToDelete);
+
+                                    fetch('eliminar_subservico.php', {
+                                        method: 'POST',
+                                        body: formData
+                                    })
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        let modalElement = document.getElementById('confirmDeleteSubservicoModal');
+                                        let modal = bootstrap.Modal.getInstance(modalElement);
+                                        modal.hide();
+
+                                        if (data.status === 'success') {
+                                            // Remove the row from the table
+                                            let row = document.querySelector(`button[data-id='${subservicoIdToDelete}']`).closest('tr');
+                                            row.classList.add('table-danger');
+                                            setTimeout(() => row.remove(), 500);
+                                            
+                                            // Show success message
+                                            var toast = document.getElementById('subservicoToast');
+                                            var toastBody = toast.querySelector('.toast-body');
+                                            toastBody.textContent = data.message;
+                                            var bsToast = new bootstrap.Toast(toast);
+                                            bsToast.show();
+                                        } else {
+                                            alert(data.message);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        alert('Erro ao eliminar subtipo de serviço');
+                                    });
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Erro ao carregar subtipos de serviço');
+                    });
+            } else {
+                row.style.display = 'none';
+                this.textContent = '+';
+            }
+        });
+    });
+
+    // Only run this block if on the reservas page (checks for the filter form)
+    if (document.getElementById('filterForm')) {
+        // Manipulação da seleção de colunas
+        const checkboxes = document.querySelectorAll('.dropdown-menu input[type="checkbox"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const selectedColumns = [];
+                checkboxes.forEach(function(cb) {
+                    if (cb.checked) {
+                        selectedColumns.push(cb.id.replace('check', '').toLowerCase());
+                    }
+                });
+                if (selectedColumns.length > 0) {
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('colunas', selectedColumns.join(','));
+                    window.location.href = url.toString();
+                }
+            });
+        });
+
+        // Confirmar exclusão
+        const btnEliminar = document.querySelectorAll('.btn-eliminar');
+        const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
+        let confirmDeleteModal = null;
+        if (confirmDeleteModalEl) {
+            confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
+        }
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        let reservaId;
+        btnEliminar.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                reservaId = this.getAttribute('data-id');
+                if (confirmDeleteModal) confirmDeleteModal.show();
+            });
+        });
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', function() {
+                window.location.href = 'excluir_reserva.php?id=' + reservaId;
+            });
+        }
+
+        // Alterar status
+        const statusLinks = document.querySelectorAll('.alter-status');
+        statusLinks.forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const id = this.getAttribute('data-id');
+                const status = this.getAttribute('data-status');
+                window.location.href = 'alterar_status_reserva.php?id=' + id + '&status=' + status;
+            });
+        });
     }
 }); 

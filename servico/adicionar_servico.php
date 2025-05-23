@@ -17,13 +17,23 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Process the form data and add the client to the database
-    // ...
+    $nome = trim($_POST['nome'] ?? '');
 
-    $_SESSION['success'] = "Serviço adicionado com sucesso!";
-    header("Location: servico.php");
-    exit();
-}    
+    if ($nome !== '') {
+        $stmt = $conn->prepare("INSERT INTO servico (nome) VALUES (?)");
+        $stmt->bind_param("s", $nome);
+        if ($stmt->execute()) {
+            $_SESSION['success'] = "Serviço adicionado com sucesso!";
+            header("Location: servico.php");
+            exit();
+        } else {
+            $error = "Erro ao adicionar serviço.";
+        }
+        $stmt->close();
+    } else {
+        $error = "O nome do serviço é obrigatório.";
+    }
+}
 
 $title = 'Adicionar Serviço';
 
@@ -58,40 +68,18 @@ ob_start();
     }
     ?>
 
-<form action="guardar_servico.php" method="POST">
-    <div class="mb-3">
-        <label class="form-label">Categoria do Serviço:</label>
-        <select name="servico_id" class="form-control" required>
-            <option value="">Selecione uma Categoria</option>
-            <?php
-            require_once '../includes/db_conexao.php';
-            $query = "SELECT id, nome FROM servico";
-            $result = $conn->query($query);
+    <?php if (!empty($error)): ?>
+        <div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div>
+    <?php endif; ?>
 
-            while ($row = $result->fetch_assoc()) {
-                echo "<option value='{$row['id']}'>{$row['nome']}</option>";
-            }
-            ?>
-        </select>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Nome:</label>
-        <input type="text" name="nome" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Descrição:</label>
-        <input type="text" name="descricao" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Preço</label>
-        <input type="number" step="0.01" name="preco" class="form-control" required>
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Duração (minutos)</label>
-        <input type="number" name="duracao" class="form-control" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Guardar</button>
-</form>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="nome" class="form-label">Nome do Serviço</label>
+            <input type="text" class="form-control" id="nome" name="nome" required>
+        </div>
+        <button type="submit" class="btn btn-success">Adicionar</button>
+        <a href="servico.php" class="btn btn-secondary">Cancelar</a>
+    </form>
 </div>
 <?php
 $content = ob_get_clean(); // Capture the output and store it in $content
