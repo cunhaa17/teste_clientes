@@ -14,14 +14,11 @@ if (!isset($_GET['servico_id']) || empty($_GET['servico_id'])) {
     exit;
 }
 
-$servico_id = intval($_GET['servico_id']);
+$servico_id = $conn->real_escape_string($_GET['servico_id']);
 
 // Buscar subtipos do serviço selecionado
-$sql = "SELECT id, nome, preco, duracao FROM servico_subtipo WHERE servico_id = ? ORDER BY nome";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $servico_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$sql = "SELECT id, nome, preco, duracao FROM servico_subtipo WHERE servico_id = '$servico_id' ORDER BY nome";
+$result = $conn->query($sql);
 
 echo '<option value="">Selecione um serviço</option>';
 
@@ -33,6 +30,5 @@ while ($row = $result->fetch_assoc()) {
          $row['duracao'] . ' min)</option>';
 }
 
-$stmt->close();
 $conn->close();
 ?>

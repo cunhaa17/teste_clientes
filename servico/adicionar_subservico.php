@@ -15,58 +15,57 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 
 include_once '../includes/db_conexao.php';
 
-$servico_id = isset($_GET['servico_id']) ? intval($_GET['servico_id']) : 0;
+if (isset($_GET['servico_id'])) {
+    $servico_id = $conn->real_escape_string($_GET['servico_id']);
+    
+    // Verificar se o serviço existe
+    $sql = "SELECT id, nome FROM servico WHERE id = '$servico_id'";
+    $result = $conn->query($sql);
+    
+    if ($result->num_rows === 0) {
+        $_SESSION['mensagem'] = "Serviço não encontrado.";
+        header("Location: servico.php");
+        exit();
+    }
+    
+    $servico = $result->fetch_assoc();
+} else {
+    header("Location: servico.php");
+    exit();
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $servico_id = trim($_POST['servico_id']);
-    $nome = trim($_POST['nome']);
-    $descricao = trim($_POST['descricao']);
-    $preco = trim($_POST['preco']);
-    $duracao = trim($_POST['duracao']);
-
-    // Verifica se os campos obrigatórios foram preenchidos
-    if (empty($servico_id) || empty($nome) || empty($preco) || empty($duracao)) {
-        $_SESSION['error'] = 'Por favor, preencha todos os campos obrigatórios.';
-        header('Location: adicionar_subservico.php?servico_id=' . $servico_id);
+    $servico_id = $conn->real_escape_string($_POST['servico_id']);
+    $nome = $conn->real_escape_string($_POST['nome']);
+    $descricao = $conn->real_escape_string($_POST['descricao']);
+    $preco = $conn->real_escape_string($_POST['preco']);
+    $duracao = $conn->real_escape_string($_POST['duracao']);
+    
+    // Verificar se já existe um subtipo com o mesmo nome
+    $sql_check = "SELECT id FROM servico_subtipo WHERE nome = '$nome' AND servico_id = '$servico_id'";
+    $result_check = $conn->query($sql_check);
+    
+    if ($result_check->num_rows > 0) {
+        $_SESSION['mensagem'] = "Já existe um subtipo com este nome.";
+        header("Location: adicionar_subservico.php?servico_id=" . $servico_id);
         exit();
     }
-
-    // Verifica se o ID do serviço existe
-    $query = "SELECT id FROM servico WHERE id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $servico_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 0) {
-        $_SESSION['error'] = 'O serviço selecionado não existe.';
-        header('Location: adicionar_subservico.php?servico_id=' . $servico_id);
-        exit();
-    }
-
-    // Insere o subtipo de serviço
-    $query = "INSERT INTO servico_subtipo (servico_id, nome, descricao, preco, duracao) VALUES (?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("issss", $servico_id, $nome, $descricao, $preco, $duracao);
-
-    if ($stmt->execute()) {
-        $_SESSION['success'] = 'Subtipo de serviço adicionado com sucesso!';
+    
+    // Inserir o novo subtipo
+    $sql = "INSERT INTO servico_subtipo (servico_id, nome, descricao, preco, duracao) VALUES ('$servico_id', '$nome', '$descricao', '$preco', '$duracao')";
+    
+    if ($conn->query($sql)) {
+        $_SESSION['success'] = "Subtipo adicionado com sucesso!";
         header("Location: servico.php");
         exit();
     } else {
-        $_SESSION['error'] = 'Erro ao adicionar subtipo de serviço. Tente novamente.';
+        $_SESSION['mensagem'] = "Erro ao adicionar subtipo: " . $conn->error;
+        header("Location: adicionar_subservico.php?servico_id=" . $servico_id);
+        exit();
     }
 }
 
 $title = 'Adicionar Subtipo de Serviço';
-
-// Buscar informações do serviço principal
-$query = "SELECT nome FROM servico WHERE id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $servico_id);
-$stmt->execute();
-$result = $stmt->get_result();
-$servico = $result->fetch_assoc();
 
 ob_start();
 ?>

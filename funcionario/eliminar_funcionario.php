@@ -20,20 +20,16 @@ header('Content-Type: application/json');
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    $id = intval($_POST['id']);
+    $id = $conn->real_escape_string($_POST['id']);
 
     if ($id > 0) {
-        $query = "DELETE FROM funcionario WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $id);
-
-        if ($stmt->execute()) {
+        $query = "DELETE FROM funcionario WHERE id = '$id'";
+        
+        if ($conn->query($query)) {
             echo json_encode(["status" => "success", "message" => "Funcionário eliminado com sucesso!"]);
         } else {
             echo json_encode(["status" => "error", "message" => "Erro ao eliminar funcionário."]);
         }
-
-        $stmt->close();
     } else {
         echo json_encode(["status" => "error", "message" => "ID inválido."]);
     }

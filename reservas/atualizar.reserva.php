@@ -11,13 +11,12 @@ if (!isset($_GET['id'])) {
     echo "Reserva não encontrada.";
     exit();
 }
-$reserva_id = intval($_GET['id']);
+$reserva_id = $conn->real_escape_string($_GET['id']);
 
-$stmt = $conn->prepare("SELECT * FROM reserva WHERE id=?");
-$stmt->bind_param("i", $reserva_id);
-$stmt->execute();
-$reserva = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+// Buscar dados da reserva
+$sql = "SELECT * FROM reserva WHERE id = '$reserva_id'";
+$result = $conn->query($sql);
+$reserva = $result->fetch_assoc();
 
 if (!$reserva) {
     echo "Reserva não encontrada.";
@@ -101,4 +100,28 @@ ob_start();
 <?php
 $content = ob_get_clean();
 include '../includes/layout.php';
+
+if (isset($_POST['id'])) {
+    $reserva_id = $conn->real_escape_string($_POST['id']);
+    
+    // Verificar se a reserva existe
+    $sql_check = "SELECT id FROM reserva WHERE id = '$reserva_id'";
+    $result_check = $conn->query($sql_check);
+    
+    if ($result_check->num_rows === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Reserva não encontrada']);
+        exit();
+    }
+    
+    // Atualizar a reserva
+    $sql = "UPDATE reserva SET status = 'cancelada' WHERE id = '$reserva_id'";
+    
+    if ($conn->query($sql)) {
+        echo json_encode(['status' => 'success', 'message' => 'Reserva cancelada com sucesso']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao cancelar reserva: ' . $conn->error]);
+    }
+} else {
+    echo json_encode(['status' => 'error', 'message' => 'Requisição inválida']);
+}
 ?>

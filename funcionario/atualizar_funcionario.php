@@ -24,15 +24,12 @@ if (!isset($_POST['id']) || !filter_var($_POST['id'], FILTER_VALIDATE_INT)) {
 }
 
 // Obtém o ID do funcionário enviado pelo formulário
-$id = $_POST['id'];
+$id = $conn->real_escape_string($_POST['id']);
 
 // Cria uma query SQL segura para selecionar os dados do funcionário com o ID fornecido
-$query = "SELECT * FROM funcionarios WHERE id = ?";
-$stmt = $conn->prepare($query); // Prepara a query para execução
-$stmt->bind_param("i", $id); // Associa o parâmetro do ID como inteiro à query
-$stmt->execute(); // Executa a query preparada
-$result = $stmt->get_result(); // Obtém o resultado da query executada
-$funcionario = $result->fetch_assoc(); // Converte o resultado em um array associativo
+$query = "SELECT * FROM funcionarios WHERE id = '$id'";
+$result = $conn->query($query);
+$funcionario = $result->fetch_assoc();
 
 // Verifica se o funcionário foi encontrado na base de dados
 if (!$funcionario) {

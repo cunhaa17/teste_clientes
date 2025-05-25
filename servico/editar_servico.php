@@ -19,58 +19,50 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 require_once '../includes/db_conexao.php';
 $title = 'Editar Serviço';
 
-if (!isset($_GET['id'])) {
-    header("Location: servico.php");
-    exit();
-}
-
-$id = intval($_GET['id']);
-
-// Buscar informações do serviço
-$query = "SELECT * FROM servico WHERE id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$servico = $result->fetch_assoc();
-
-if (!$servico) {
+if (isset($_GET['id'])) {
+    $id = $conn->real_escape_string($_GET['id']);
+    
+    // Buscar dados do serviço
+    $sql = "SELECT * FROM servico WHERE id = '$id'";
+    $result = $conn->query($sql);
+    
+    if ($result->num_rows === 0) {
+        $_SESSION['mensagem'] = "Serviço não encontrado.";
+        header("Location: servico.php");
+        exit();
+    }
+    
+    $servico = $result->fetch_assoc();
+} else {
     header("Location: servico.php");
     exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim($_POST['nome']);
-
-    // Verifica se os campos obrigatórios foram preenchidos
-    if (empty($nome)) {
-        $_SESSION['error'] = 'Por favor, preencha o nome do serviço.';
+    $id = $conn->real_escape_string($_POST['id']);
+    $nome = $conn->real_escape_string($_POST['nome']);
+    
+    // Verificar se já existe um serviço com o mesmo nome
+    $sql_check = "SELECT id FROM servico WHERE nome = '$nome' AND id != '$id'";
+    $result_check = $conn->query($sql_check);
+    
+    if ($result_check->num_rows > 0) {
+        $_SESSION['mensagem'] = "Já existe um serviço com este nome.";
+        header("Location: editar_servico.php?id=" . $id);
+        exit();
+    }
+    
+    // Atualizar o serviço
+    $sql = "UPDATE servico SET nome = '$nome' WHERE id = '$id'";
+    
+    if ($conn->query($sql)) {
+        $_SESSION['success'] = "Serviço atualizado com sucesso!";
+        header("Location: servico.php");
+        exit();
     } else {
-        // Verifica se já existe um serviço com o mesmo nome
-        $check_query = "SELECT id FROM servico WHERE nome = ? AND id != ?";
-        $check_stmt = $conn->prepare($check_query);
-        $check_stmt->bind_param("si", $nome, $id);
-        $check_stmt->execute();
-        $check_result = $check_stmt->get_result();
-
-        if ($check_result->num_rows > 0) {
-            $_SESSION['error'] = 'Já existe um serviço com este nome.';
-        } else {
-            // Atualiza o serviço
-            $update_query = "UPDATE servico SET nome = ? WHERE id = ?";
-            $update_stmt = $conn->prepare($update_query);
-            $update_stmt->bind_param("si", $nome, $id);
-
-            if ($update_stmt->execute()) {
-                $_SESSION['success'] = 'Serviço atualizado com sucesso!';
-                header("Location: servico.php");
-                exit();
-            } else {
-                $_SESSION['error'] = '❌ Erro ao atualizar serviço. Tente novamente.';
-            }
-            $update_stmt->close();
-        }
-        $check_stmt->close();
+        $_SESSION['mensagem'] = "Erro ao atualizar serviço: " . $conn->error;
+        header("Location: editar_servico.php?id=" . $id);
+        exit();
     }
 }
 

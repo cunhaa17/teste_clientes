@@ -57,18 +57,13 @@ $ordem = ($ordem === 'ASC') ? 'ASC' : 'DESC';
 $sql = "SELECT id, " . $colunas_sql . " FROM funcionario WHERE 1=1";
 
 if (!empty($search)) {
-    $sql .= " AND (nome LIKE ? OR email LIKE ? OR morada LIKE ? OR localidade LIKE ? OR telefone1 LIKE ? OR telefone2 LIKE ?)";
-    $search_param = "%$search%";
-    $stmt = $conn->prepare($sql . " ORDER BY $ordenar_por $ordem");
-    $stmt->bind_param("ssssss", $search_param, $search_param, $search_param, $search_param, $search_param, $search_param);
-} else {
-    $stmt = $conn->prepare($sql . " ORDER BY $ordenar_por $ordem");
+    $search = $conn->real_escape_string($search);
+    $sql .= " AND (nome LIKE '%$search%' OR email LIKE '%$search%' OR morada LIKE '%$search%' OR localidade LIKE '%$search%' OR telefone1 LIKE '%$search%' OR telefone2 LIKE '%$search%')";
 }
 
-$stmt->execute();
-$resultado = $stmt->get_result();
+$sql .= " ORDER BY $ordenar_por $ordem";
+$resultado = $conn->query($sql);
 $funcionarios = $resultado->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
 $conn->close();
 
 ob_start();

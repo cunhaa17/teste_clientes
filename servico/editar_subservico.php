@@ -15,51 +15,56 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 
 include_once '../includes/db_conexao.php';
 
-if (!isset($_GET['id'])) {
-    header("Location: servico.php");
-    exit();
-}
-
-$id = intval($_GET['id']);
-
-// Buscar informações do subtipo de serviço
-$query = "SELECT ss.*, s.nome as servico_nome 
-          FROM servico_subtipo ss 
-          JOIN servico s ON ss.servico_id = s.id 
-          WHERE ss.id = ?";
-$stmt = $conn->prepare($query);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$subservico = $result->fetch_assoc();
-
-if (!$subservico) {
+if (isset($_GET['id'])) {
+    $id = $conn->real_escape_string($_GET['id']);
+    
+    // Buscar dados do subtipo
+    $sql = "SELECT s.*, ss.nome as servico_nome 
+            FROM servico_subtipo s 
+            JOIN servico ss ON s.servico_id = ss.id 
+            WHERE s.id = '$id'";
+    $result = $conn->query($sql);
+    
+    if ($result->num_rows === 0) {
+        $_SESSION['mensagem'] = "Subtipo não encontrado.";
+        header("Location: servico.php");
+        exit();
+    }
+    
+    $subtipo = $result->fetch_assoc();
+} else {
     header("Location: servico.php");
     exit();
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim($_POST['nome']);
-    $descricao = trim($_POST['descricao']);
-    $preco = trim($_POST['preco']);
-    $duracao = trim($_POST['duracao']);
-
-    // Verifica se os campos obrigatórios foram preenchidos
-    if (empty($nome) || empty($preco) || empty($duracao)) {
-        $_SESSION['error'] = 'Por favor, preencha todos os campos obrigatórios.';
+    $id = $conn->real_escape_string($_POST['id']);
+    $nome = $conn->real_escape_string($_POST['nome']);
+    $descricao = $conn->real_escape_string($_POST['descricao']);
+    $preco = $conn->real_escape_string($_POST['preco']);
+    $duracao = $conn->real_escape_string($_POST['duracao']);
+    
+    // Verificar se já existe um subtipo com o mesmo nome
+    $sql_check = "SELECT id FROM servico_subtipo WHERE nome = '$nome' AND id != '$id'";
+    $result_check = $conn->query($sql_check);
+    
+    if ($result_check->num_rows > 0) {
+        $_SESSION['mensagem'] = "Já existe um subtipo com este nome.";
+        header("Location: editar_subservico.php?id=" . $id);
+        exit();
+    }
+    
+    // Atualizar o subtipo
+    $sql = "UPDATE servico_subtipo SET nome = '$nome', descricao = '$descricao', preco = '$preco', duracao = '$duracao' WHERE id = '$id'";
+    
+    if ($conn->query($sql)) {
+        $_SESSION['success'] = "Subtipo atualizado com sucesso!";
+        header("Location: servico.php");
+        exit();
     } else {
-        // Atualiza o subtipo de serviço
-        $query = "UPDATE servico_subtipo SET nome = ?, descricao = ?, preco = ?, duracao = ? WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("ssssi", $nome, $descricao, $preco, $duracao, $id);
-
-        if ($stmt->execute()) {
-            $_SESSION['success'] = 'Subtipo de serviço atualizado com sucesso!';
-            header("Location: servico.php");
-            exit();
-        } else {
-            $_SESSION['error'] = 'Erro ao atualizar subtipo de serviço. Tente novamente.';
-        }
+        $_SESSION['mensagem'] = "Erro ao atualizar subtipo: " . $conn->error;
+        header("Location: editar_subservico.php?id=" . $id);
+        exit();
     }
 }
 
@@ -88,27 +93,27 @@ ob_start();
             <form method="POST" action="editar_subservico.php?id=<?php echo $id; ?>">
                 <div class="mb-3">
                     <label class="form-label">Serviço Principal</label>
-                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($subservico['servico_nome']); ?>" readonly>
+                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($subtipo['servico_nome']); ?>" readonly>
                 </div>
 
                 <div class="mb-3">
                     <label for="nome" class="form-label">Nome do Subtipo *</label>
-                    <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($subservico['nome']); ?>" required>
+                    <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($subtipo['nome']); ?>" required>
                 </div>
 
                 <div class="mb-3">
                     <label for="descricao" class="form-label">Descrição</label>
-                    <textarea class="form-control" id="descricao" name="descricao" rows="3"><?php echo htmlspecialchars($subservico['descricao']); ?></textarea>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3"><?php echo htmlspecialchars($subtipo['descricao']); ?></textarea>
                 </div>
 
                 <div class="mb-3">
                     <label for="preco" class="form-label">Preço (€) *</label>
-                    <input type="number" step="0.01" class="form-control" id="preco" name="preco" value="<?php echo htmlspecialchars($subservico['preco']); ?>" required>
+                    <input type="number" step="0.01" class="form-control" id="preco" name="preco" value="<?php echo htmlspecialchars($subtipo['preco']); ?>" required>
                 </div>
 
                 <div class="mb-3">
                     <label for="duracao" class="form-label">Duração (minutos) *</label>
-                    <input type="number" class="form-control" id="duracao" name="duracao" value="<?php echo htmlspecialchars($subservico['duracao']); ?>" required>
+                    <input type="number" class="form-control" id="duracao" name="duracao" value="<?php echo htmlspecialchars($subtipo['duracao']); ?>" required>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Atualizar Subtipo</button>

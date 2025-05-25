@@ -19,36 +19,27 @@ header('Content-Type: application/json');
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    $id = intval($_POST['id']);
+    $id = $conn->real_escape_string($_POST['id']);
 
-    error_log("Recebido pedido para eliminar ID: " . $id);
+    // Verificar se o serviço existe
+    $sql_check = "SELECT id FROM servico WHERE id = '$id'";
+    $result_check = $conn->query($sql_check);
 
-    if ($id > 0) {
-        // First, delete all subservices associated with this service
-        $query = "DELETE FROM servico_subtipo WHERE servico_id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $stmt->close();
+    if ($result_check->num_rows === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Serviço não encontrado']);
+        exit();
+    }
 
-        // Then delete the main service
-        $query = "DELETE FROM servico WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $id);
-
-        if ($stmt->execute()) {
-            echo json_encode(["status" => "success", "message" => "Serviço eliminado com sucesso!"]);
-        } else {
-            error_log("Erro ao executar DELETE: " . $stmt->error);
-            echo json_encode(["status" => "error", "message" => "Erro ao eliminar serviço."]);
-        }
-
-        $stmt->close();
+    // Excluir o serviço
+    $sql_delete = "DELETE FROM servico WHERE id = '$id'";
+    
+    if ($conn->query($sql_delete)) {
+        echo json_encode(['status' => 'success', 'message' => 'Serviço excluído com sucesso']);
     } else {
-        echo json_encode(["status" => "error", "message" => "ID inválido."]);
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao excluir serviço: ' . $conn->error]);
     }
 } else {
-    echo json_encode(["status" => "error", "message" => "Requisição inválida."]);
+    echo json_encode(['status' => 'error', 'message' => 'Requisição inválida']);
 }
 
 $conn->close();

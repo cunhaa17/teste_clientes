@@ -30,14 +30,11 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
     exit();
 }
 
-$id = intval($_GET['id']);
+$id = $conn->real_escape_string($_GET['id']);
 
 // Buscar dados do horário
-$sql = "SELECT id, funcionario_id, data_inicio, data_fim FROM agenda_funcionario WHERE id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
+$sql = "SELECT id, funcionario_id, data_inicio, data_fim FROM agenda_funcionario WHERE id = '$id'";
+$result = $conn->query($sql);
 
 if ($result->num_rows === 0) {
     $_SESSION['mensagem'] = "Horário não encontrado";
@@ -46,7 +43,6 @@ if ($result->num_rows === 0) {
 }
 
 $agenda = $result->fetch_assoc();
-$stmt->close();
 
 // Formatar datas e horas para o formulário
 $data_inicio = date('Y-m-d', strtotime($agenda['data_inicio']));
@@ -61,9 +57,9 @@ $funcionarios = $result_funcionarios->fetch_all(MYSQLI_ASSOC);
 
 // Processar o formulário quando enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $funcionario_id = $_POST['funcionario_id'];
-    $data_inicio = $_POST['data_inicio'] . ' ' . $_POST['hora_inicio'];
-    $data_fim = $_POST['data_fim'] . ' ' . $_POST['hora_fim'];
+    $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
+    $data_inicio = $conn->real_escape_string($_POST['data_inicio'] . ' ' . $_POST['hora_inicio']);
+    $data_fim = $conn->real_escape_string($_POST['data_fim'] . ' ' . $_POST['hora_fim']);
     
     // Validações
     $errors = [];
@@ -88,38 +84,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Verificar se há sobreposição com outros horários (excluindo o atual)
     if (empty($errors)) {
         $sql_check = "SELECT id FROM agenda_funcionario 
-                      WHERE funcionario_id = ? 
-                      AND id != ?
-                      AND ((data_inicio <= ? AND data_fim >= ?) 
-                           OR (data_inicio <= ? AND data_fim >= ?)
-                           OR (data_inicio >= ? AND data_fim <= ?))";
-        $stmt_check = $conn->prepare($sql_check);
-        $stmt_check->bind_param("iissssss", $funcionario_id, $id, $data_fim, $data_inicio, $data_inicio, $data_inicio, $data_inicio, $data_fim);
-        $stmt_check->execute();
-        $result_check = $stmt_check->get_result();
+                      WHERE funcionario_id = '$funcionario_id' 
+                      AND id != '$id'
+                      AND ((data_inicio <= '$data_fim' AND data_fim >= '$data_inicio') 
+                           OR (data_inicio <= '$data_inicio' AND data_fim >= '$data_inicio')
+                           OR (data_inicio >= '$data_inicio' AND data_fim <= '$data_fim'))";
+        $result_check = $conn->query($sql_check);
         
         if ($result_check->num_rows > 0) {
             $errors[] = "Há sobreposição com outro horário já cadastrado para este funcionário";
         }
-        
-        $stmt_check->close();
     }
     
     // Se não houver erros, atualiza no banco
     if (empty($errors)) {
-        $sql = "UPDATE agenda_funcionario SET funcionario_id = ?, data_inicio = ?, data_fim = ? WHERE id = ?";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("issi", $funcionario_id, $data_inicio, $data_fim, $id);
+        $sql = "UPDATE agenda_funcionario SET funcionario_id = '$funcionario_id', data_inicio = '$data_inicio', data_fim = '$data_fim' WHERE id = '$id'";
         
-        if ($stmt->execute()) {
+        if ($conn->query($sql)) {
             $_SESSION['success'] = "Horário atualizado com sucesso!";
             header("Location: agenda_funcionarios.php");
             exit();
         } else {
             $errors[] = "Erro ao atualizar horário: " . $conn->error;
         }
-        
-        $stmt->close();
     }
 }
 

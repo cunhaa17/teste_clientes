@@ -24,14 +24,11 @@ include_once '../includes/db_conexao.php';
 
 // AJAX Handler para subtipos
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'subtipos' && isset($_GET['servico_id'])) {
-    $servico_id = intval($_GET['servico_id']);
+    $servico_id = $conn->real_escape_string($_GET['servico_id']);
     
     // Buscar subtipos do serviço selecionado
-    $sql = "SELECT id, nome, preco, duracao FROM servico_subtipo WHERE servico_id = ? ORDER BY nome";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $servico_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $sql = "SELECT id, nome, preco, duracao FROM servico_subtipo WHERE servico_id = '$servico_id' ORDER BY nome";
+    $result = $conn->query($sql);
     
     echo '<option value="">Selecione um serviço</option>';
     
@@ -43,26 +40,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'subtipos' && isset($_GET['servico
              $row['duracao'] . ' min)</option>';
     }
     
-    $stmt->close();
     $conn->close();
-    exit; // Importante para parar a execução do resto do código
+    exit;
 }
 
 // AJAX Handler para funcionários
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'funcionarios' && isset($_GET['servico_subtipo_id'])) {
-    $servico_subtipo_id = intval($_GET['servico_subtipo_id']);
+    $servico_subtipo_id = $conn->real_escape_string($_GET['servico_subtipo_id']);
     
     // Buscar funcionários associados ao subtipo de serviço
     $sql = "SELECT f.id, f.nome 
             FROM funcionario f
             JOIN funcionario_subtipo fs ON f.id = fs.funcionario_id
-            WHERE fs.servico_subtipo_id = ?
+            WHERE fs.servico_subtipo_id = '$servico_subtipo_id'
             ORDER BY f.nome";
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $servico_subtipo_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $result = $conn->query($sql);
     
     // Verificar se encontrou funcionários
     if ($result->num_rows > 0) {
@@ -83,29 +76,25 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'funcionarios' && isset($_GET['ser
         }
     }
     
-    $stmt->close();
     $conn->close();
-    exit; // Importante para parar a execução do resto do código
+    exit;
 }
 
 // AJAX Handler para verificar disponibilidade
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'verificar_disponibilidade') {
-    $funcionario_id = intval($_GET['funcionario_id']);
-    $data = $_GET['data'];
-    $hora = $_GET['hora'];
+    $funcionario_id = $conn->real_escape_string($_GET['funcionario_id']);
+    $data = $conn->real_escape_string($_GET['data']);
+    $hora = $conn->real_escape_string($_GET['hora']);
     
     // Buscar reservas existentes para o funcionário na data/hora especificada
     $sql = "SELECT r.id, r.data_reserva, ss.duracao 
             FROM reserva r 
             JOIN servico_subtipo ss ON r.servico_subtipo_id = ss.id 
-            WHERE r.funcionario_id = ? 
-            AND DATE(r.data_reserva) = ? 
+            WHERE r.funcionario_id = '$funcionario_id' 
+            AND DATE(r.data_reserva) = '$data' 
             AND r.status != 'cancelada'";
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("is", $funcionario_id, $data);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $result = $conn->query($sql);
     
     $reservas = [];
     while ($row = $result->fetch_assoc()) {
@@ -130,26 +119,22 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'verificar_disponibilidade') {
     }
     
     echo json_encode(['disponivel' => $disponivel]);
-    $stmt->close();
     $conn->close();
     exit;
 }
 
 // AJAX Handler para buscar horários disponíveis
 if (isset($_GET['ajax']) && $_GET['ajax'] === 'horarios_disponiveis') {
-    $funcionario_id = intval($_GET['funcionario_id']);
-    $data = $_GET['data'];
-    $servico_subtipo_id = intval($_GET['servico_subtipo_id']);
+    $funcionario_id = $conn->real_escape_string($_GET['funcionario_id']);
+    $data = $conn->real_escape_string($_GET['data']);
+    $servico_subtipo_id = $conn->real_escape_string($_GET['servico_subtipo_id']);
     
     // Buscar horário de funcionamento do funcionário
     $sql_horario = "SELECT data_inicio, data_fim FROM agenda_funcionario 
-                    WHERE funcionario_id = ? 
-                    AND DATE(data_inicio) = ?
+                    WHERE funcionario_id = '$funcionario_id' 
+                    AND DATE(data_inicio) = '$data'
                     ORDER BY data_inicio";
-    $stmt_horario = $conn->prepare($sql_horario);
-    $stmt_horario->bind_param("is", $funcionario_id, $data);
-    $stmt_horario->execute();
-    $result_horario = $stmt_horario->get_result();
+    $result_horario = $conn->query($sql_horario);
     $horarios = $result_horario->fetch_all(MYSQLI_ASSOC);
     
     if (empty($horarios)) {
@@ -162,26 +147,20 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'horarios_disponiveis') {
     }
     
     // Buscar duração do serviço
-    $sql_duracao = "SELECT duracao FROM servico_subtipo WHERE id = ?";
-    $stmt_duracao = $conn->prepare($sql_duracao);
-    $stmt_duracao->bind_param("i", $servico_subtipo_id);
-    $stmt_duracao->execute();
-    $result_duracao = $stmt_duracao->get_result();
+    $sql_duracao = "SELECT duracao FROM servico_subtipo WHERE id = '$servico_subtipo_id'";
+    $result_duracao = $conn->query($sql_duracao);
     $servico = $result_duracao->fetch_assoc();
     
     // Buscar reservas existentes
     $sql = "SELECT r.data_reserva, ss.duracao 
             FROM reserva r 
             JOIN servico_subtipo ss ON r.servico_subtipo_id = ss.id 
-            WHERE r.funcionario_id = ? 
-            AND DATE(r.data_reserva) = ? 
+            WHERE r.funcionario_id = '$funcionario_id' 
+            AND DATE(r.data_reserva) = '$data' 
             AND r.status != 'cancelada'
             ORDER BY r.data_reserva";
     
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("is", $funcionario_id, $data);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $result = $conn->query($sql);
     $reservas = $result->fetch_all(MYSQLI_ASSOC);
     
     // Calcular horários disponíveis
@@ -227,9 +206,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'horarios_disponiveis') {
         'horarios' => $horarios_disponiveis
     ]);
     
-    $stmt->close();
-    $stmt_horario->close();
-    $stmt_duracao->close();
     $conn->close();
     exit;
 }
@@ -253,14 +229,14 @@ $funcionarios = $result_funcionarios->fetch_all(MYSQLI_ASSOC);
 
 // Processar o formulário quando enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $cliente_id = $_POST['cliente_id'];
-    $servico_id = $_POST['servico_id'];
-    $servico_subtipo_id = $_POST['servico_subtipo_id'];
-    $funcionario_id = $_POST['funcionario_id'];
-    $data = $_POST['data'];
-    $hora = $_POST['hora'];
-    $status = $_POST['status'];
-    $observacao = $_POST['observacao'];
+    $cliente_id = $conn->real_escape_string($_POST['cliente_id']);
+    $servico_id = $conn->real_escape_string($_POST['servico_id']);
+    $servico_subtipo_id = $conn->real_escape_string($_POST['servico_subtipo_id']);
+    $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
+    $data = $conn->real_escape_string($_POST['data']);
+    $hora = $conn->real_escape_string($_POST['hora']);
+    $status = $conn->real_escape_string($_POST['status']);
+    $observacao = $conn->real_escape_string($_POST['observacao']);
     
     // Validações
     $errors = [];
@@ -298,19 +274,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data_reserva = $data . ' ' . $hora;
         
         $sql = "INSERT INTO reserva (data_reserva, status, cliente_id, servico_id, servico_subtipo_id, funcionario_id, observacao) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssiiiis", $data_reserva, $status, $cliente_id, $servico_id, $servico_subtipo_id, $funcionario_id, $observacao);
+                VALUES ('$data_reserva', '$status', '$cliente_id', '$servico_id', '$servico_subtipo_id', '$funcionario_id', '$observacao')";
         
-        if ($stmt->execute()) {
-            $reserva_id = $stmt->insert_id;
+        if ($conn->query($sql)) {
+            $reserva_id = $conn->insert_id;
             
             // Opcional: Inserir na tabela reserva_funcionario se necessário
-            $sql_reserva_func = "INSERT INTO reserva_funcionario (r_id, f_id) VALUES (?, ?)";
-            $stmt_reserva_func = $conn->prepare($sql_reserva_func);
-            $stmt_reserva_func->bind_param("ii", $reserva_id, $funcionario_id);
-            $stmt_reserva_func->execute();
-            $stmt_reserva_func->close();
+            $sql_reserva_func = "INSERT INTO reserva_funcionario (r_id, f_id) VALUES ('$reserva_id', '$funcionario_id')";
+            $conn->query($sql_reserva_func);
             
             $_SESSION['success'] = "Reserva adicionada com sucesso!";
             header("Location: reservas.php");
@@ -318,8 +289,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $errors[] = "Erro ao adicionar reserva: " . $conn->error;
         }
-        
-        $stmt->close();
     }
 }
 

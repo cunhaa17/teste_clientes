@@ -24,33 +24,30 @@ $reserva_id = intval($_GET['id']);
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get form data
-    $data_reserva = $_POST['data_reserva'];
-    $status = $_POST['status'];
-    $cliente_id = $_POST['cliente_id'];
-    $servico_id = $_POST['servico_id'];
-    $servico_subtipo_id = $_POST['servico_subtipo_id'];
-    $funcionario_id = $_POST['funcionario_id'];
-    $observacao = $_POST['observacao'];
+    $data_reserva = $conn->real_escape_string($_POST['data_reserva']);
+    $status = $conn->real_escape_string($_POST['status']);
+    $cliente_id = $conn->real_escape_string($_POST['cliente_id']);
+    $servico_id = $conn->real_escape_string($_POST['servico_id']);
+    $servico_subtipo_id = $conn->real_escape_string($_POST['servico_subtipo_id']);
+    $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
+    $observacao = $conn->real_escape_string($_POST['observacao']);
 
     // Update reservation in DB
-    $stmt = $conn->prepare("UPDATE reserva SET data_reserva=?, status=?, cliente_id=?, servico_id=?, servico_subtipo_id=?, funcionario_id=?, observacao=? WHERE id=?");
-    $stmt->bind_param("ssiiiisi", $data_reserva, $status, $cliente_id, $servico_id, $servico_subtipo_id, $funcionario_id, $observacao, $reserva_id);
-    if ($stmt->execute()) {
+    $sql = "UPDATE reserva SET data_reserva='$data_reserva', status='$status', cliente_id='$cliente_id', servico_id='$servico_id', servico_subtipo_id='$servico_subtipo_id', funcionario_id='$funcionario_id', observacao='$observacao' WHERE id='$reserva_id'";
+    
+    if ($conn->query($sql)) {
         $_SESSION['success'] = "Reserva atualizada com sucesso!";
         header("Location: reservas.php");
         exit();
     } else {
         $erro = "Erro ao atualizar reserva.";
     }
-    $stmt->close();
 }
 
 // Load reservation data
-$stmt = $conn->prepare("SELECT * FROM reserva WHERE id=?");
-$stmt->bind_param("i", $reserva_id);
-$stmt->execute();
-$reserva = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+$sql = "SELECT * FROM reserva WHERE id='$reserva_id'";
+$result = $conn->query($sql);
+$reserva = $result->fetch_assoc();
 
 if (!$reserva) {
     echo "Reserva não encontrada.";

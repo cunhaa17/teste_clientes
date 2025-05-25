@@ -58,82 +58,42 @@ if (!in_array($ordenar_por, $colunas_permitidas)) {
 
 $ordem = ($ordem === 'ASC') ? 'ASC' : 'DESC';
 
-// Construção da consulta SQL
-$sql = "SELECT r.id, r.data_reserva, r.status, r.observacao, 
-               c.nome AS cliente, c.id AS cliente_id,
-               s.nome AS servico, s.id AS servico_id,
-               ss.nome AS subtipo, ss.id AS servico_subtipo_id,
-               f.nome AS funcionario, f.id AS funcionario_id
-        FROM reserva r
-        JOIN cliente c ON r.cliente_id = c.id
-        JOIN servico s ON r.servico_id = s.id
-        JOIN servico_subtipo ss ON r.servico_subtipo_id = ss.id
-        JOIN funcionario f ON r.funcionario_id = f.id
+// Construir a query base
+$sql = "SELECT r.*, c.nome as cliente_nome, s.nome as servico_nome, ss.nome as subtipo_nome, f.nome as funcionario_nome 
+        FROM reserva r 
+        JOIN cliente c ON r.cliente_id = c.id 
+        JOIN servico s ON r.servico_id = s.id 
+        JOIN servico_subtipo ss ON r.servico_subtipo_id = ss.id 
+        JOIN funcionario f ON r.funcionario_id = f.id 
         WHERE 1=1";
 
-$params = [];
-$param_types = "";
-
+// Adicionar condições de busca se houver
 if (!empty($search)) {
-    $sql .= " AND (c.nome LIKE ? OR f.nome LIKE ? OR s.nome LIKE ? OR ss.nome LIKE ? OR r.observacao LIKE ?)";
-    $search_param = "%$search%";
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $params[] = $search_param;
-    $param_types .= "sssss";
+    $search = $conn->real_escape_string($search);
+    $sql .= " AND (c.nome LIKE '%$search%' OR s.nome LIKE '%$search%' OR ss.nome LIKE '%$search%' OR f.nome LIKE '%$search%')";
 }
 
 if (!empty($status_filter)) {
-    $sql .= " AND r.status = ?";
-    $params[] = $status_filter;
-    $param_types .= "s";
+    $status_filter = $conn->real_escape_string($status_filter);
+    $sql .= " AND r.status = '$status_filter'";
 }
 
 if (!empty($data_inicio)) {
-    $sql .= " AND r.data_reserva >= ?";
-    $params[] = $data_inicio . " 00:00:00";
-    $param_types .= "s";
+    $data_inicio = $conn->real_escape_string($data_inicio);
+    $sql .= " AND DATE(r.data_reserva) >= '$data_inicio'";
 }
 
 if (!empty($data_fim)) {
-    $sql .= " AND r.data_reserva <= ?";
-    $params[] = $data_fim . " 23:59:59";
-    $param_types .= "s";
+    $data_fim = $conn->real_escape_string($data_fim);
+    $sql .= " AND DATE(r.data_reserva) <= '$data_fim'";
 }
 
-// Ordenação
-$sql .= " ORDER BY ";
-switch ($ordenar_por) {
-    case 'cliente':
-        $sql .= "c.nome";
-        break;
-    case 'servico':
-        $sql .= "s.nome";
-        break;
-    case 'subtipo':
-        $sql .= "ss.nome";
-        break;
-    case 'funcionario':
-        $sql .= "f.nome";
-        break;
-    default:
-        $sql .= "r.$ordenar_por";
-}
-$sql .= " $ordem";
+// Adicionar ordenação
+$sql .= " ORDER BY r.data_reserva DESC";
 
-// Executar a consulta
-$stmt = $conn->prepare($sql);
-
-if (!empty($params)) {
-    $stmt->bind_param($param_types, ...$params);
-}
-
-$stmt->execute();
-$resultado = $stmt->get_result();
-$reservas = $resultado->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
+// Executar a query
+$result = $conn->query($sql);
+$reservas = $result->fetch_all(MYSQLI_ASSOC);
 
 ob_start();
 ?>
@@ -463,19 +423,19 @@ ob_start();
                             <?php endif; ?>
                             
                             <?php if (in_array('cliente', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['cliente']); ?></td>
+                                <td><?php echo htmlspecialchars($reserva['cliente_nome']); ?></td>
                             <?php endif; ?>
                             
                             <?php if (in_array('servico', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['servico']); ?></td>
+                                <td><?php echo htmlspecialchars($reserva['servico_nome']); ?></td>
                             <?php endif; ?>
                             
                             <?php if (in_array('subtipo', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['subtipo']); ?></td>
+                                <td><?php echo htmlspecialchars($reserva['subtipo_nome']); ?></td>
                             <?php endif; ?>
                             
                             <?php if (in_array('funcionario', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['funcionario']); ?></td>
+                                <td><?php echo htmlspecialchars($reserva['funcionario_nome']); ?></td>
                             <?php endif; ?>
                             
                             <?php if (in_array('observacao', $colunas_selecionadas)): ?>

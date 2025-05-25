@@ -14,7 +14,7 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 }
 
 if (isset($_GET['q'])) {
-    $query = htmlspecialchars($_GET['q']);
+    $query = $conn->real_escape_string($_GET['q']);
 
     // Conectar ao banco de dados
     $conn = new mysqli("localhost", "usuario", "senha", "banco");
@@ -24,12 +24,8 @@ if (isset($_GET['q'])) {
     }
 
     // Buscar os resultados
-    $sql = "SELECT nome FROM servico_subtipo WHERE nome LIKE ? LIMIT 10";
-    $stmt = $conn->prepare($sql);
-    $param = "%$query%";
-    $stmt->bind_param("s", $param);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $sql = "SELECT nome FROM servico WHERE nome LIKE '%$query%' LIMIT 10";
+    $result = $conn->query($sql);
 
     if ($result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
@@ -39,7 +35,6 @@ if (isset($_GET['q'])) {
         echo "<p>Nenhum resultado encontrado</p>";
     }
 
-    $stmt->close();
     $conn->close();
 } else {
     echo "<p>Erro na requisição</p>";

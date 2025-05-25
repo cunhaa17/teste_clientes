@@ -17,21 +17,29 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim($_POST['nome'] ?? '');
-
-    if ($nome !== '') {
-        $stmt = $conn->prepare("INSERT INTO servico (nome) VALUES (?)");
-        $stmt->bind_param("s", $nome);
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "Serviço adicionado com sucesso!";
-            header("Location: servico.php");
-            exit();
-        } else {
-            $error = "Erro ao adicionar serviço.";
-        }
-        $stmt->close();
+    $nome = $conn->real_escape_string($_POST['nome']);
+    
+    // Verificar se já existe um serviço com o mesmo nome
+    $sql_check = "SELECT id FROM servico WHERE nome = '$nome'";
+    $result_check = $conn->query($sql_check);
+    
+    if ($result_check->num_rows > 0) {
+        $_SESSION['mensagem'] = "Já existe um serviço com este nome.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+    
+    // Inserir o novo serviço
+    $sql = "INSERT INTO servico (nome) VALUES ('$nome')";
+    
+    if ($conn->query($sql)) {
+        $_SESSION['success'] = "Serviço adicionado com sucesso!";
+        header("Location: servico.php");
+        exit();
     } else {
-        $error = "O nome do serviço é obrigatório.";
+        $_SESSION['mensagem'] = "Erro ao adicionar serviço: " . $conn->error;
+        header("Location: adicionar_servico.php");
+        exit();
     }
 }
 

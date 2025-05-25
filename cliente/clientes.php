@@ -62,18 +62,13 @@ $ordem = ($ordem === 'ASC') ? 'ASC' : 'DESC';
 $sql = "SELECT id, " . implode(", ", $colunas_selecionadas) . " FROM Cliente WHERE 1=1";
 
 if (!empty($search)) {
-    $sql .= " AND (nome LIKE ? OR email LIKE ? OR telefone LIKE ? )";
-    $search_param = "%$search%";
-    $stmt = $conn->prepare($sql . " ORDER BY $ordenar_por $ordem");
-    $stmt->bind_param("sss", $search_param, $search_param, $search_param);
-} else {
-    $stmt = $conn->prepare($sql . " ORDER BY $ordenar_por $ordem");
+    $search = $conn->real_escape_string($search);
+    $sql .= " AND (nome LIKE '%$search%' OR email LIKE '%$search%' OR telefone LIKE '%$search%')";
 }
 
-$stmt->execute();
-$resultado = $stmt->get_result();
+$sql .= " ORDER BY $ordenar_por $ordem";
+$resultado = $conn->query($sql);
 $clientes = $resultado->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
 $conn->close();
 
 ob_start();

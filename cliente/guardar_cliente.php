@@ -28,12 +28,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Escapa os valores para evitar SQL injection
+    $nome = $conn->real_escape_string($nome);
+    $email = $conn->real_escape_string($email);
+    $telefone = $conn->real_escape_string($telefone);
+
     // Verifica se o email ou telefone já existem no banco de dados
-    $query = "SELECT * FROM cliente WHERE email = ? OR telefone = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ss", $email, $telefone);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $query = "SELECT * FROM cliente WHERE email = '$email' OR telefone = '$telefone'";
+    $result = $conn->query($query);
 
     if ($result->num_rows > 0) {
         $_SESSION['error'] = 'O email ou telefone já estão registados.';
@@ -45,11 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data_registo = date('Y-m-d');
 
     // Insere o novo cliente no banco de dados
-    $query = "INSERT INTO cliente (nome, email, telefone, data_registo) VALUES (?, ?, ?, ?)";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ssss", $nome, $email, $telefone, $data_registo);
-
-    if ($stmt->execute()) {
+    $query = "INSERT INTO cliente (nome, email, telefone, data_registo) VALUES ('$nome', '$email', '$telefone', '$data_registo')";
+    
+    if ($conn->query($query)) {
         $_SESSION['success'] = 'Cliente adicionado com sucesso!';
         header("Location: clientes.php");
         exit();

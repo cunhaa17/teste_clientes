@@ -27,33 +27,30 @@ if (isset($_GET['id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $id = mysqli_real_escape_string($conn, $_POST['id']);
-    $nome = mysqli_real_escape_string($conn, $_POST['nome']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']); 
-    $morada = mysqli_real_escape_string($conn, $_POST['morada']);
-    $localidade = mysqli_real_escape_string($conn, $_POST['localidade']);
-    $telefone1 = mysqli_real_escape_string($conn, $_POST['telefone1']);
-    $telefone2 = mysqli_real_escape_string($conn, $_POST['telefone2']);
-    $cargo = mysqli_real_escape_string($conn, $_POST['cargo']);
+    $id = $conn->real_escape_string($_POST['id']);
+    $nome = $conn->real_escape_string($_POST['nome']);
+    $email = $conn->real_escape_string($_POST['email']); 
+    $morada = $conn->real_escape_string($_POST['morada']);
+    $localidade = $conn->real_escape_string($_POST['localidade']);
+    $telefone1 = $conn->real_escape_string($_POST['telefone1']);
+    $telefone2 = $conn->real_escape_string($_POST['telefone2']);
+    $cargo = $conn->real_escape_string($_POST['cargo']);
 
     // Check for duplicates
-    $query = "SELECT * FROM funcionario WHERE (email = ? OR telefone1 = ?) AND id != ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ssi", $email, $telefone1, $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $query = "SELECT * FROM funcionario WHERE (email = '$email' OR telefone1 = '$telefone1') AND id != '$id'";
+    $result = $conn->query($query);
 
     if ($result->num_rows > 0) {
         $_SESSION['error'] = 'O email ou telefone já estão registados.';
     } else {
         $query = "UPDATE funcionario SET nome = '$nome', email = '$email', morada = '$morada', localidade = '$localidade', telefone1 = '$telefone1', telefone2 = '$telefone2', cargo = '$cargo' WHERE id = '$id'";
         
-        if(mysqli_query($conn, $query)) {
+        if($conn->query($query)) {
             $_SESSION['success'] = 'Funcionário atualizado com sucesso!';
             header('Location: funcionario.php');
             exit();
         } else {
-            $erro = "Erro ao atualizar: " . mysqli_error($conn);
+            $erro = "Erro ao atualizar: " . $conn->error;
         }
     }
 }

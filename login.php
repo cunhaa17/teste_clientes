@@ -4,20 +4,12 @@ session_start();
 include 'includes/db_conexao.php'; // Arquivo que conecta ao banco de dados
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = $_POST['email'];
+    $email = $conn->real_escape_string($_POST['email']);
     $senha = $_POST['senha'];
 
     // Verifica se o utilizador existe
-    $sql = "SELECT * FROM adms WHERE email = ? LIMIT 1";
-    $stmt = $conn->prepare($sql);
-    
-    if ($stmt === false) {
-        die("Erro ao preparar a consulta: " . $conn->error);
-    }
-
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $resultado = $stmt->get_result();
+    $sql = "SELECT * FROM adms WHERE email = '$email' LIMIT 1";
+    $resultado = $conn->query($sql);
 
     if ($resultado->num_rows > 0) {
         $utilizador = $resultado->fetch_assoc();

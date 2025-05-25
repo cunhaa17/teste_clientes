@@ -30,24 +30,22 @@ unset($_SESSION['success']);
 
 // Processar exclusão de horário
 if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
-    $id = intval($_GET['id']);
-    $stmt = $conn->prepare("DELETE FROM agenda_funcionario WHERE id = ?");
-    $stmt->bind_param("i", $id);
+    $id = $conn->real_escape_string($_GET['id']);
+    $query = "DELETE FROM agenda_funcionario WHERE id = '$id'";
     
-    if ($stmt->execute()) {
+    if ($conn->query($query)) {
         $_SESSION['success'] = "Horário removido com sucesso!";
     } else {
         $_SESSION['mensagem'] = "Erro ao remover o horário: " . $conn->error;
     }
     
-    $stmt->close();
     header("Location: agenda_funcionarios.php");
     exit();
 }
 
 // Filtro de funcionário
-$funcionario_filtro = isset($_GET['funcionario_id']) ? intval($_GET['funcionario_id']) : 0;
-$data_filtro = isset($_GET['data']) ? $_GET['data'] : '';
+$funcionario_filtro = isset($_GET['funcionario_id']) ? $conn->real_escape_string($_GET['funcionario_id']) : 0;
+$data_filtro = isset($_GET['data']) ? $conn->real_escape_string($_GET['data']) : '';
 
 // Buscar todos os funcionários para o dropdown de filtro
 $sql_funcionarios = "SELECT id, nome FROM funcionario ORDER BY nome";
@@ -61,33 +59,18 @@ $sql = "SELECT af.id, af.funcionario_id, f.nome as funcionario_nome,
         JOIN funcionario f ON af.funcionario_id = f.id
         WHERE 1=1";
 
-$params = [];
-$param_types = "";
-
 if ($funcionario_filtro > 0) {
-    $sql .= " AND af.funcionario_id = ?";
-    $params[] = $funcionario_filtro;
-    $param_types .= "i";
+    $sql .= " AND af.funcionario_id = '$funcionario_filtro'";
 }
 
 if (!empty($data_filtro)) {
-    $sql .= " AND DATE(af.data_inicio) = ?";
-    $params[] = $data_filtro;
-    $param_types .= "s";
+    $sql .= " AND DATE(af.data_inicio) = '$data_filtro'";
 }
 
 $sql .= " ORDER BY af.data_inicio DESC";
 
-$stmt = $conn->prepare($sql);
-
-if (!empty($params)) {
-    $stmt->bind_param($param_types, ...$params);
-}
-
-$stmt->execute();
-$result = $stmt->get_result();
+$result = $conn->query($sql);
 $agendas = $result->fetch_all(MYSQLI_ASSOC);
-$stmt->close();
 
 ob_start();
 ?>

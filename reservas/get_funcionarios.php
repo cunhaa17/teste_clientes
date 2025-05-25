@@ -14,19 +14,16 @@ if (!isset($_GET['servico_subtipo_id']) || empty($_GET['servico_subtipo_id'])) {
     exit;
 }
 
-$servico_subtipo_id = intval($_GET['servico_subtipo_id']);
+$servico_subtipo_id = $conn->real_escape_string($_GET['servico_subtipo_id']);
 
 // Buscar funcionários associados ao subtipo de serviço
 $sql = "SELECT f.id, f.nome 
         FROM funcionario f
         JOIN funcionario_subtipo fs ON f.id = fs.funcionario_id
-        WHERE fs.servico_subtipo_id = ?
+        WHERE fs.servico_subtipo_id = '$servico_subtipo_id'
         ORDER BY f.nome";
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $servico_subtipo_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$result = $conn->query($sql);
 
 // Verificar se encontrou funcionários
 if ($result->num_rows > 0) {
@@ -47,6 +44,5 @@ if ($result->num_rows > 0) {
     }
 }
 
-$stmt->close();
 $conn->close();
 ?>

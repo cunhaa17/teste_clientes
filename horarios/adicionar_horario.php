@@ -30,8 +30,8 @@ $funcionarios = $result_funcionarios->fetch_all(MYSQLI_ASSOC);
 
 // Processar o formulário quando enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $funcionario_id = $_POST['funcionario_id'];
-    $tipo = $_POST['tipo'];
+    $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
+    $tipo = $conn->real_escape_string($_POST['tipo']);
     
     // Validações
     $errors = [];
@@ -42,12 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Modo horário normal de trabalho (segunda a sexta)
     if ($tipo === 'normal') {
-        $data_inicio = $_POST['data_inicio'];
-        $data_fim = $_POST['data_fim'];
-        $hora_entrada_manha = $_POST['hora_entrada_manha'];
-        $hora_saida_manha = $_POST['hora_saida_manha'];
-        $hora_entrada_tarde = $_POST['hora_entrada_tarde'];
-        $hora_saida_tarde = $_POST['hora_saida_tarde'];
+        $data_inicio = $conn->real_escape_string($_POST['data_inicio']);
+        $data_fim = $conn->real_escape_string($_POST['data_fim']);
+        $hora_entrada_manha = $conn->real_escape_string($_POST['hora_entrada_manha']);
+        $hora_saida_manha = $conn->real_escape_string($_POST['hora_saida_manha']);
+        $hora_entrada_tarde = $conn->real_escape_string($_POST['hora_entrada_tarde']);
+        $hora_saida_tarde = $conn->real_escape_string($_POST['hora_saida_tarde']);
         $dias_semana = isset($_POST['dias_semana']) ? $_POST['dias_semana'] : [];
         
         if (empty($data_inicio) || empty($data_fim)) {
@@ -98,12 +98,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data_inicio_manha = $data_atual . ' ' . $hora_entrada_manha;
                     $data_fim_manha = $data_atual . ' ' . $hora_saida_manha;
                     
-                    $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES (?, ?, ?)";
-                    $stmt = $conn->prepare($sql);
-                    $stmt->bind_param("iss", $funcionario_id, $data_inicio_manha, $data_fim_manha);
+                    $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES ('$funcionario_id', '$data_inicio_manha', '$data_fim_manha')";
                     
-                    if (!$stmt->execute()) {
-                        $errors[] = "Erro ao inserir horário da manhã: " . $stmt->error;
+                    if (!$conn->query($sql)) {
+                        $errors[] = "Erro ao inserir horário da manhã: " . $conn->error;
                         $sucesso = false;
                         break;
                     }
@@ -113,12 +111,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $data_inicio_tarde = $data_atual . ' ' . $hora_entrada_tarde;
                         $data_fim_tarde = $data_atual . ' ' . $hora_saida_tarde;
                         
-                        $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES (?, ?, ?)";
-                        $stmt = $conn->prepare($sql);
-                        $stmt->bind_param("iss", $funcionario_id, $data_inicio_tarde, $data_fim_tarde);
+                        $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES ('$funcionario_id', '$data_inicio_tarde', '$data_fim_tarde')";
                         
-                        if (!$stmt->execute()) {
-                            $errors[] = "Erro ao inserir horário da tarde: " . $stmt->error;
+                        if (!$conn->query($sql)) {
+                            $errors[] = "Erro ao inserir horário da tarde: " . $conn->error;
                             $sucesso = false;
                             break;
                         }
@@ -138,8 +134,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // Modo de folga/ausência (especificar início e fim específicos)
     else if ($tipo === 'folga') {
-        $data_folga = $_POST['data_folga'];
-        $motivo = $_POST['motivo'];
+        $data_folga = $conn->real_escape_string($_POST['data_folga']);
+        $motivo = $conn->real_escape_string($_POST['motivo']);
         
         if (empty($data_folga)) {
             $errors[] = "A data da folga é obrigatória";
@@ -148,17 +144,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Verificar se já existem horários para este dia
         if (empty($errors)) {
             $sql_check = "SELECT id FROM agenda_funcionario 
-                         WHERE funcionario_id = ? 
-                         AND DATE(data_inicio) = ?";
-            $stmt_check = $conn->prepare($sql_check);
-            $stmt_check->bind_param("is", $funcionario_id, $data_folga);
-            $stmt_check->execute();
+                         WHERE funcionario_id = '$funcionario_id' 
+                         AND DATE(data_inicio) = '$data_folga'";
+            $result_check = $conn->query($sql_check);
             
-            if ($stmt_check->get_result()->num_rows > 0) {
+            if ($result_check->num_rows > 0) {
                 $errors[] = "Já existem horários cadastrados para esta data. Remova-os primeiro antes de adicionar uma folga.";
             }
-            
-            $stmt_check->close();
         }
         
         // Se não houver erros, registrar a folga (não inserindo nenhum horário)
@@ -170,9 +162,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // Horário específico (um período único)
     else if ($tipo === 'especifico') {
-        $data_especifica = $_POST['data_especifica'];
-        $hora_inicio_especifica = $_POST['hora_inicio_especifica'];
-        $hora_fim_especifica = $_POST['hora_fim_especifica'];
+        $data_especifica = $conn->real_escape_string($_POST['data_especifica']);
+        $hora_inicio_especifica = $conn->real_escape_string($_POST['hora_inicio_especifica']);
+        $hora_fim_especifica = $conn->real_escape_string($_POST['hora_fim_especifica']);
         
         if (empty($data_especifica) || empty($hora_inicio_especifica) || empty($hora_fim_especifica)) {
             $errors[] = "A data e os horários de início e fim são obrigatórios";
@@ -188,19 +180,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Se não houver erros, inserir o horário específico
         if (empty($errors)) {
-            $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES (?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-            $stmt->bind_param("iss", $funcionario_id, $data_inicio_especifica, $data_fim_especifica);
+            $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES ('$funcionario_id', '$data_inicio_especifica', '$data_fim_especifica')";
             
-            if ($stmt->execute()) {
+            if ($conn->query($sql)) {
                 $_SESSION['success'] = "Horário específico adicionado com sucesso!";
                 header("Location: agenda_funcionarios.php");
                 exit();
             } else {
-                $errors[] = "Erro ao adicionar horário: " . $stmt->error;
+                $errors[] = "Erro ao adicionar horário: " . $conn->error;
             }
-            
-            $stmt->close();
         }
     }
 }

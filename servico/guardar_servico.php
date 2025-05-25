@@ -15,11 +15,11 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $servico_id = trim($_POST['servico_id']); // ID da categoria (serviço)
-    $nome = trim($_POST['nome']);
-    $descricao = trim($_POST['descricao']);
-    $preco = trim($_POST['preco']);
-    $duracao = trim($_POST['duracao']);
+    $servico_id = $conn->real_escape_string($_POST['servico_id']);
+    $nome = $conn->real_escape_string($_POST['nome']);
+    $descricao = $conn->real_escape_string($_POST['descricao']);
+    $preco = $conn->real_escape_string($_POST['preco']);
+    $duracao = $conn->real_escape_string($_POST['duracao']);
 
     // Verifica se os campos obrigatórios foram preenchidos
     if (empty($servico_id) || empty($nome) || empty($descricao) || empty($preco) || empty($duracao)) {
@@ -29,11 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Verifica se o ID do serviço (categoria) existe na tabela servico
-    $query = "SELECT id FROM servico WHERE id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $servico_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $sql_check = "SELECT id FROM servico WHERE id = '$servico_id'";
+    $result = $conn->query($sql_check);
 
     if ($result->num_rows === 0) {
         $_SESSION['error'] = 'O serviço selecionado não existe.';
@@ -41,23 +38,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Insere na tabela servico_subtipo associando ao servico_id
-    $query = "INSERT INTO servico_subtipo (servico_id, nome, descricao, preco, duracao) VALUES (?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("issss", $servico_id, $nome, $descricao, $preco, $duracao);
+    // Verificar se já existe um serviço com o mesmo nome
+    $sql_check = "SELECT id FROM servico_subtipo WHERE nome = '$nome' AND servico_id = '$servico_id'";
+    $result_check = $conn->query($sql_check);
 
-    if ($stmt->execute()) {
-        $_SESSION['success'] = 'Serviço adicionado com sucesso!';
+    if ($result_check->num_rows > 0) {
+        $_SESSION['mensagem'] = "Já existe um serviço com este nome.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+
+    // Inserir o novo serviço
+    $sql = "INSERT INTO servico_subtipo (servico_id, nome, descricao, preco, duracao) VALUES ('$servico_id', '$nome', '$descricao', '$preco', '$duracao')";
+    
+    if ($conn->query($sql)) {
+        $_SESSION['success'] = "Serviço adicionado com sucesso!";
         header("Location: servico.php");
         exit();
     } else {
-        $_SESSION['error'] = 'Erro ao adicionar serviço. Tente novamente.';
+        $_SESSION['mensagem'] = "Erro ao adicionar serviço: " . $conn->error;
+        header("Location: adicionar_servico.php");
+        exit();
     }
-
-    // Fecha a conexão
-    $stmt->close();
-    $conn->close();
-    header('Location: servico.php');
-    exit();
 }
 ?>

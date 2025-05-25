@@ -18,42 +18,26 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    $id = intval($_POST['id']);
+    $id = $conn->real_escape_string($_POST['id']);
 
-    if ($id > 0) {
-        // Verificar se o subtipo existe
-        $check_query = "SELECT id FROM servico_subtipo WHERE id = ?";
-        $check_stmt = $conn->prepare($check_query);
-        $check_stmt->bind_param("i", $id);
-        $check_stmt->execute();
-        $check_result = $check_stmt->get_result();
+    // Verificar se o subtipo existe
+    $sql_check = "SELECT id FROM servico_subtipo WHERE id = '$id'";
+    $result_check = $conn->query($sql_check);
 
-        if ($check_result->num_rows === 0) {
-            header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'Subtipo de serviço não encontrado']);
-            exit();
-        }
+    if ($result_check->num_rows === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Subtipo não encontrado']);
+        exit();
+    }
 
-        // Eliminar o subtipo
-        $delete_query = "DELETE FROM servico_subtipo WHERE id = ?";
-        $delete_stmt = $conn->prepare($delete_query);
-        $delete_stmt->bind_param("i", $id);
-
-        if ($delete_stmt->execute()) {
-            header('Content-Type: application/json');
-            echo json_encode(['status' => 'success', 'message' => 'Subtipo de serviço eliminado com sucesso']);
-        } else {
-            header('Content-Type: application/json');
-            echo json_encode(['status' => 'error', 'message' => 'Erro ao eliminar subtipo de serviço']);
-        }
-
-        $delete_stmt->close();
+    // Excluir o subtipo
+    $sql_delete = "DELETE FROM servico_subtipo WHERE id = '$id'";
+    
+    if ($conn->query($sql_delete)) {
+        echo json_encode(['status' => 'success', 'message' => 'Subtipo excluído com sucesso']);
     } else {
-        header('Content-Type: application/json');
-        echo json_encode(['status' => 'error', 'message' => 'ID inválido']);
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao excluir subtipo: ' . $conn->error]);
     }
 } else {
-    header('Content-Type: application/json');
     echo json_encode(['status' => 'error', 'message' => 'Requisição inválida']);
 }
 

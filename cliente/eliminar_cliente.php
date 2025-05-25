@@ -24,18 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     error_log("Recebido pedido para eliminar ID: " . $id);
 
     if ($id > 0) {
-        $query = "DELETE FROM Cliente WHERE id = ?";
-        $stmt = $conn->prepare($query);
-        $stmt->bind_param("i", $id);
-
-        if ($stmt->execute()) {
+        $id = $conn->real_escape_string($id);
+        $query = "DELETE FROM Cliente WHERE id = '$id'";
+        
+        if ($conn->query($query)) {
             echo json_encode(["status" => "success", "message" => "Cliente eliminado com sucesso!"]);
         } else {
-            error_log("Erro ao executar DELETE: " . $stmt->error);
+            error_log("Erro ao executar DELETE: " . $conn->error);
             echo json_encode(["status" => "error", "message" => "Erro ao eliminar cliente."]);
         }
-
-        $stmt->close();
     } else {
         echo json_encode(["status" => "error", "message" => "ID inválido."]);
     }

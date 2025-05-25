@@ -27,12 +27,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Verifica se o email ou telefone já existem no banco de dados
-    $query = "SELECT * FROM cliente WHERE email = ? OR telefone = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ss", $email, $telefone);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    // Escapa os valores para evitar SQL injection
+    $email = $conn->real_escape_string($email);
+    $telefone = $conn->real_escape_string($telefone);
+
+    // Monta a query diretamente com os valores escapados
+    $query = "SELECT * FROM cliente WHERE email = '$email' OR telefone = '$telefone'";
+    $result = $conn->query($query);
 
     if ($result->num_rows > 0) {
         $_SESSION['error'] = 'O email ou telefone já estão registados.';
@@ -41,17 +42,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Insere o cliente na base de dados
-    $sql = "INSERT INTO cliente (nome, email, telefone) VALUES (?, ?, ?)";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sss", $nome, $email, $telefone);
-
-    if ($stmt->execute()) {
+    $nome = $conn->real_escape_string($nome);
+    $sql = "INSERT INTO cliente (nome, email, telefone) VALUES ('$nome', '$email', '$telefone')";
+    
+    if ($conn->query($sql)) {
         $_SESSION['success'] = "Cliente adicionado com sucesso!";
     } else {
-        $_SESSION['error'] = "Erro ao adicionar cliente: " . $stmt->error;
+        $_SESSION['error'] = "Erro ao adicionar cliente: " . $conn->error;
     }
 
-    $stmt->close();
     $conn->close();
 
     header("Location: clientes.php");

@@ -33,11 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $telefone = mysqli_real_escape_string($conn, $_POST['telefone']);
 
     // Check for duplicates
-    $query = "SELECT * FROM cliente WHERE (email = ? OR telefone = ?) AND id != ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ssi", $email, $telefone, $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $query = "SELECT * FROM cliente WHERE (email = '$email' OR telefone = '$telefone') AND id != '$id'";
+    $result = mysqli_query($conn, $query);
 
     if ($result->num_rows > 0) {
         $_SESSION['error'] = 'O email ou telefone já estão registados.';

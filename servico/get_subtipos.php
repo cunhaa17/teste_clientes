@@ -14,18 +14,15 @@ if (!isset($_GET['servico_id']) || empty($_GET['servico_id'])) {
     exit;
 }
 
-$servico_id = intval($_GET['servico_id']);
+$servico_id = $conn->real_escape_string($_GET['servico_id']);
 
 // Buscar subtipos do serviço
 $sql = "SELECT id, nome, descricao, preco, duracao 
         FROM servico_subtipo 
-        WHERE servico_id = ? 
+        WHERE servico_id = '$servico_id' 
         ORDER BY nome";
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $servico_id);
-$stmt->execute();
-$result = $stmt->get_result();
+$result = $conn->query($sql);
 
 // Add the delete confirmation modal
 echo '<div class="modal fade" id="confirmDeleteSubservicoModal" tabindex="-1" aria-labelledby="confirmDeleteSubservicoLabel" aria-hidden="true">
@@ -97,6 +94,5 @@ if ($result->num_rows > 0) {
     echo '</div>';
 }
 
-$stmt->close();
 $conn->close();
 ?> 

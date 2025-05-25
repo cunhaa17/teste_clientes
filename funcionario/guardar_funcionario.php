@@ -32,12 +32,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    // Escapa os valores para evitar SQL injection
+    $nome = $conn->real_escape_string($nome);
+    $email = $conn->real_escape_string($email);
+    $morada = $conn->real_escape_string($morada);
+    $localidade = $conn->real_escape_string($localidade);
+    $telefone1 = $conn->real_escape_string($telefone1);
+    $telefone2 = $conn->real_escape_string($telefone2);
+    $cargo = $conn->real_escape_string($cargo);
+
     // Verifica se o email ou telefone já existem no banco de dados
-    $query = "SELECT * FROM funcionario WHERE email = ? OR telefone1 = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ss", $email, $telefone1);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $query = "SELECT * FROM funcionario WHERE email = '$email' OR telefone1 = '$telefone1'";
+    $result = $conn->query($query);
 
     if ($result->num_rows > 0) {
         $_SESSION['error'] = 'O email ou telefone já estão registados.';
@@ -46,11 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Insere o novo funcionario no banco de dados
-    $query = "INSERT INTO funcionario (nome, email, morada, localidade, telefone1, telefone2, cargo) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("sssssss", $nome, $email, $morada, $localidade, $telefone1, $telefone2, $cargo);
-
-    if ($stmt->execute()) {
+    $query = "INSERT INTO funcionario (nome, email, morada, localidade, telefone1, telefone2, cargo) VALUES ('$nome', '$email', '$morada', '$localidade', '$telefone1', '$telefone2', '$cargo')";
+    
+    if ($conn->query($query)) {
         $_SESSION['success'] = 'Funcionário adicionado com sucesso!';
         header("Location: funcionario.php");
         exit();

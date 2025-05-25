@@ -33,31 +33,24 @@ unset($_SESSION['success']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['associar']) && isset($_POST['funcionario_id']) && isset($_POST['servico_subtipo_id'])) {
         // Associar funcionário a serviço
-        $funcionario_id = $_POST['funcionario_id'];
-        $servico_subtipo_id = $_POST['servico_subtipo_id'];
+        $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
+        $servico_subtipo_id = $conn->real_escape_string($_POST['servico_subtipo_id']);
         
         // Verificar se já existe a associação
-        $check_sql = "SELECT * FROM funcionario_subtipo WHERE funcionario_id = ? AND servico_subtipo_id = ?";
-        $check_stmt = $conn->prepare($check_sql);
-        $check_stmt->bind_param("ii", $funcionario_id, $servico_subtipo_id);
-        $check_stmt->execute();
-        $check_result = $check_stmt->get_result();
+        $check_sql = "SELECT * FROM funcionario_subtipo WHERE funcionario_id = '$funcionario_id' AND servico_subtipo_id = '$servico_subtipo_id'";
+        $check_result = $conn->query($check_sql);
         
         if ($check_result->num_rows > 0) {
             $_SESSION['mensagem'] = "Esta associação já existe!";
         } else {
-            $insert_sql = "INSERT INTO funcionario_subtipo (funcionario_id, servico_subtipo_id) VALUES (?, ?)";
-            $insert_stmt = $conn->prepare($insert_sql);
-            $insert_stmt->bind_param("ii", $funcionario_id, $servico_subtipo_id);
+            $insert_sql = "INSERT INTO funcionario_subtipo (funcionario_id, servico_subtipo_id) VALUES ('$funcionario_id', '$servico_subtipo_id')";
             
-            if ($insert_stmt->execute()) {
+            if ($conn->query($insert_sql)) {
                 $_SESSION['success'] = "Funcionário associado ao serviço com sucesso!";
             } else {
                 $_SESSION['mensagem'] = "Erro ao associar: " . $conn->error;
             }
-            $insert_stmt->close();
         }
-        $check_stmt->close();
         
         header("Location: funcionario_servicos.php?funcionario_id=" . $funcionario_id);
         exit();
@@ -65,19 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (isset($_POST['remover']) && isset($_POST['funcionario_id']) && isset($_POST['servico_subtipo_id'])) {
         // Remover associação
-        $funcionario_id = $_POST['funcionario_id'];
-        $servico_subtipo_id = $_POST['servico_subtipo_id'];
+        $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
+        $servico_subtipo_id = $conn->real_escape_string($_POST['servico_subtipo_id']);
         
-        $delete_sql = "DELETE FROM funcionario_subtipo WHERE funcionario_id = ? AND servico_subtipo_id = ?";
-        $delete_stmt = $conn->prepare($delete_sql);
-        $delete_stmt->bind_param("ii", $funcionario_id, $servico_subtipo_id);
+        $delete_sql = "DELETE FROM funcionario_subtipo WHERE funcionario_id = '$funcionario_id' AND servico_subtipo_id = '$servico_subtipo_id'";
         
-        if ($delete_stmt->execute()) {
+        if ($conn->query($delete_sql)) {
             $_SESSION['success'] = "Associação removida com sucesso!";
         } else {
             $_SESSION['mensagem'] = "Erro ao remover associação: " . $conn->error;
         }
-        $delete_stmt->close();
         
         header("Location: funcionario_servicos.php?funcionario_id=" . $funcionario_id);
         exit();
@@ -95,16 +85,12 @@ $servicos_associados = [];
 $servicos_disponiveis = [];
 
 if (isset($_GET['funcionario_id']) && !empty($_GET['funcionario_id'])) {
-    $funcionario_id = $_GET['funcionario_id'];
+    $funcionario_id = $conn->real_escape_string($_GET['funcionario_id']);
     
     // Obter dados do funcionário selecionado
-    $func_sql = "SELECT id, nome FROM funcionario WHERE id = ?";
-    $func_stmt = $conn->prepare($func_sql);
-    $func_stmt->bind_param("i", $funcionario_id);
-    $func_stmt->execute();
-    $func_result = $func_stmt->get_result();
+    $func_sql = "SELECT id, nome FROM funcionario WHERE id = '$funcionario_id'";
+    $func_result = $conn->query($func_sql);
     $funcionario_selecionado = $func_result->fetch_assoc();
-    $func_stmt->close();
     
     if ($funcionario_selecionado) {
         // Obter serviços já associados ao funcionário
@@ -112,29 +98,21 @@ if (isset($_GET['funcionario_id']) && !empty($_GET['funcionario_id'])) {
                            FROM servico_subtipo ss
                            JOIN servico s ON ss.servico_id = s.id
                            JOIN funcionario_subtipo fs ON ss.id = fs.servico_subtipo_id
-                           WHERE fs.funcionario_id = ?
+                           WHERE fs.funcionario_id = '$funcionario_id'
                            ORDER BY s.nome, ss.nome";
-        $serv_assoc_stmt = $conn->prepare($serv_assoc_sql);
-        $serv_assoc_stmt->bind_param("i", $funcionario_id);
-        $serv_assoc_stmt->execute();
-        $serv_assoc_result = $serv_assoc_stmt->get_result();
+        $serv_assoc_result = $conn->query($serv_assoc_sql);
         $servicos_associados = $serv_assoc_result->fetch_all(MYSQLI_ASSOC);
-        $serv_assoc_stmt->close();
         
         // Obter serviços disponíveis (não associados)
         $serv_disp_sql = "SELECT ss.id, ss.nome, s.nome as categoria, ss.preco, ss.duracao 
                           FROM servico_subtipo ss
                           JOIN servico s ON ss.servico_id = s.id
                           WHERE ss.id NOT IN (
-                              SELECT servico_subtipo_id FROM funcionario_subtipo WHERE funcionario_id = ?
+                              SELECT servico_subtipo_id FROM funcionario_subtipo WHERE funcionario_id = '$funcionario_id'
                           )
                           ORDER BY s.nome, ss.nome";
-        $serv_disp_stmt = $conn->prepare($serv_disp_sql);
-        $serv_disp_stmt->bind_param("i", $funcionario_id);
-        $serv_disp_stmt->execute();
-        $serv_disp_result = $serv_disp_stmt->get_result();
+        $serv_disp_result = $conn->query($serv_disp_sql);
         $servicos_disponiveis = $serv_disp_result->fetch_all(MYSQLI_ASSOC);
-        $serv_disp_stmt->close();
     }
 }
 

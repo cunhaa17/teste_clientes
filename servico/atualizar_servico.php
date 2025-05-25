@@ -45,6 +45,30 @@ if (!$cliente) {
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Gera um token seguro aleatório
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
+    $id = $conn->real_escape_string($_POST['id']);
+
+    // Verificar se o serviço existe
+    $sql_check = "SELECT id FROM servico WHERE id = '$id'";
+    $result_check = $conn->query($sql_check);
+
+    if ($result_check->num_rows === 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Serviço não encontrado']);
+        exit();
+    }
+
+    // Atualizar o serviço
+    $sql = "UPDATE servico SET nome = '$nome' WHERE id = '$id'";
+    
+    if ($conn->query($sql)) {
+        echo json_encode(['status' => 'success', 'message' => 'Serviço atualizado com sucesso']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao atualizar serviço: ' . $conn->error]);
+    }
+} else {
+    echo json_encode(['status' => 'error', 'message' => 'Requisição inválida']);
+}
 ?>
 
 <!DOCTYPE html>

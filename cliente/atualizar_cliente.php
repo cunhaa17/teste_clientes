@@ -26,18 +26,45 @@ if (!isset($_POST['id']) || !filter_var($_POST['id'], FILTER_VALIDATE_INT)) {
 // Obtém o ID do cliente enviado pelo formulário
 $id = $_POST['id'];
 
+// Escapa o ID para evitar SQL injection
+$id = $conn->real_escape_string($id);
+
 // Cria uma query SQL segura para selecionar os dados do cliente com o ID fornecido
-$query = "SELECT * FROM cliente WHERE id = ?";
-$stmt = $conn->prepare($query); // Prepara a query para execução
-$stmt->bind_param("i", $id); // Associa o parâmetro do ID como inteiro à query
-$stmt->execute(); // Executa a query preparada
-$result = $stmt->get_result(); // Obtém o resultado da query executada
+$query = "SELECT * FROM cliente WHERE id = '$id'";
+$result = $conn->query($query);
 $cliente = $result->fetch_assoc(); // Converte o resultado em um array associativo
 
 // Verifica se o cliente foi encontrado na base de dados
 if (!$cliente) {
     // Encerra o script com uma mensagem caso o cliente não seja encontrado
     die("Cliente não encontrado.");
+}
+
+// Processa o formulário quando enviado
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['nome'])) {
+    // Escapa os valores para evitar SQL injection
+    $nome = $conn->real_escape_string($_POST['nome']);
+    $email = $conn->real_escape_string($_POST['email']);
+    $telefone = $conn->real_escape_string($_POST['telefone']);
+
+    // Verifica se o email ou telefone já existem para outro cliente
+    $check_query = "SELECT * FROM cliente WHERE (email = '$email' OR telefone = '$telefone') AND id != '$id'";
+    $check_result = $conn->query($check_query);
+
+    if ($check_result->num_rows > 0) {
+        $_SESSION['error'] = 'O email ou telefone já estão registados para outro cliente.';
+    } else {
+        // Atualiza os dados do cliente
+        $update_query = "UPDATE cliente SET nome = '$nome', email = '$email', telefone = '$telefone' WHERE id = '$id'";
+        
+        if ($conn->query($update_query)) {
+            $_SESSION['success'] = 'Cliente atualizado com sucesso!';
+            header('Location: clientes.php');
+            exit();
+        } else {
+            $_SESSION['error'] = 'Erro ao atualizar cliente: ' . $conn->error;
+        }
+    }
 }
 
 // Verifica se já existe um CSRF token na sessão, e gera um novo caso não exista
