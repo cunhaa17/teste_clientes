@@ -152,15 +152,30 @@ ob_start();
 
     <?php if ($success_message): ?>
         <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div id="successToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
+            <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <div class="d-flex align-items-center p-3">
+                    <div class="toast-icon me-3">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                    </div>
+                    <div class="toast-body fs-5">
                         <?php echo htmlspecialchars($success_message); ?>
                     </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
         </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var toastEl = document.getElementById('successToast');
+                var toast = new bootstrap.Toast(toastEl, {
+                    animation: true,
+                    autohide: true,
+                    delay: 3000
+                });
+                toast.show();
+            });
+        </script>
     <?php endif; ?>
 
     <table class="table table-striped table-hover fs-5">

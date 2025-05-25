@@ -121,11 +121,32 @@ document.addEventListener('DOMContentLoaded', function () {
         let toastElement = document.getElementById("deleteToast");
         if (!toastElement) return;
 
-        toastElement.querySelector(".toast-body").textContent = message;
-        toastElement.classList.remove("bg-success", "bg-warning", "bg-dark");
-        toastElement.classList.add(colorClass);
+        // Update toast structure with modern style
+        toastElement.className = "toast align-items-center text-white border-0";
+        toastElement.style.background = colorClass === "bg-success" 
+            ? "linear-gradient(45deg, #28a745, #20c997)" 
+            : "linear-gradient(45deg, #dc3545, #c82333)";
+        toastElement.style.borderRadius = "10px";
+        toastElement.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
 
-        let toast = new bootstrap.Toast(toastElement);
+        // Update toast content
+        toastElement.innerHTML = `
+            <div class="d-flex align-items-center p-3">
+                <div class="toast-icon me-3">
+                    <i class="bi ${colorClass === "bg-success" ? "bi-check-circle-fill" : "bi-exclamation-circle-fill"} fs-4"></i>
+                </div>
+                <div class="toast-body fs-5">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        let toast = new bootstrap.Toast(toastElement, {
+            animation: true,
+            autohide: true,
+            delay: 3000
+        });
         toast.show();
     }
 

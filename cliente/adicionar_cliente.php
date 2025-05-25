@@ -71,19 +71,61 @@ ob_start();
     <?php 
     if (isset($_SESSION['error'])) {
         echo '
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Erro:</strong> ' . htmlspecialchars($_SESSION['error']) . '
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>';
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <div class="d-flex align-items-center p-3">
+                    <div class="toast-icon me-3">
+                        <i class="bi bi-exclamation-circle-fill fs-4"></i>
+                    </div>
+                    <div class="toast-body fs-5">
+                        ' . htmlspecialchars($_SESSION['error']) . '
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                var toastEl = document.getElementById("errorToast");
+                var toast = new bootstrap.Toast(toastEl, {
+                    animation: true,
+                    autohide: true,
+                    delay: 3000
+                });
+                toast.show();
+            });
+        </script>';
         unset($_SESSION['error']);
     }
 
     if (isset($_SESSION['success'])) {
         echo '
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Sucesso:</strong> ' . htmlspecialchars($_SESSION['success']) . '
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>';
+        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+            <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <div class="d-flex align-items-center p-3">
+                    <div class="toast-icon me-3">
+                        <i class="bi bi-check-circle-fill fs-4"></i>
+                    </div>
+                    <div class="toast-body fs-5">
+                        ' . htmlspecialchars($_SESSION['success']) . '
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                var toastEl = document.getElementById("successToast");
+                var toast = new bootstrap.Toast(toastEl, {
+                    animation: true,
+                    autohide: true,
+                    delay: 3000
+                });
+                toast.show();
+            });
+        </script>';
         unset($_SESSION['success']);
     }
     ?>
