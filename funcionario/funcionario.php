@@ -1,7 +1,5 @@
 <?php
-
 session_start();
-
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -10,157 +8,88 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Verifica se a sessão está iniciada corretamente
-if (!isset($_SESSION['utilizador_id'])) {
-    header("Location: ../login.php");
-    exit();
-}
-
-// Verifica se o usuário é do tipo admin
-if ($_SESSION['utilizador_tipo'] !== 'admin') {
-    header("Location: ../index.php");
-    exit();
-}
-
-$title = "Funcionários";
+$title = "Funcionários"; // Alterado de Clientes para Funcionários
 include_once '../includes/db_conexao.php';
 
 if (isset($_GET['clear'])) {
-    header("Location: funcionario.php");
+    header("Location: funcionario.php"); // Alterado de clientes.php para funcionario.php
     exit();
 }
 
-$mensagem = isset($_SESSION['mensagem']) ? $_SESSION['mensagem'] : '';
-$success_message = isset($_SESSION['success']) ? $_SESSION['success'] : '';
-unset($_SESSION['mensagem']);
-unset($_SESSION['success']);
+// Mensagens de sucesso/erro
+if (isset($_SESSION['success'])) {
+    $success_message = $_SESSION['success'];
+    unset($_SESSION['success']);
+} else {
+    $success_message = '';
+}
+
+if (isset($_SESSION['mensagem'])) {
+    $error_message = $_SESSION['mensagem'];
+    unset($_SESSION['mensagem']);
+} else {
+    $error_message = '';
+}
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$colunas_selecionadas = isset($_GET['colunas']) ? explode(',', $_GET['colunas']) : ['nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2', 'cargo'];
-$colunas_permitidas = ['id', 'nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2', 'cargo'];
+// Definir colunas específicas para funcionários
+$colunas_selecionadas = isset($_GET['colunas']) ? explode(',', $_GET['colunas']) : ['nome', 'email', 'localidade', 'telefone1', 'telefone2']; // Colunas padrão para funcionários (removido 'id')
+$colunas_permitidas = ['id', 'nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2']; // Colunas permitidas para funcionários
 $colunas_selecionadas = array_intersect($colunas_selecionadas, $colunas_permitidas);
 
 if (empty($colunas_selecionadas)) {
-    $colunas_selecionadas = ['nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2', 'cargo'];
+    $colunas_selecionadas = ['nome', 'email', 'localidade', 'telefone1', 'telefone2']; // Fallback para funcionários (removido 'id')
 }
 
+// Constrói a string de colunas para o SELECT da query SQL
+// Sempre inclui 'id' para as ações de editar/eliminar
 $colunas_sql = implode(", ", array_unique(array_merge($colunas_selecionadas, ['id'])));
 $ordenar_por = isset($_GET['ordenar_por']) ? $_GET['ordenar_por'] : 'id';
-$ordem = isset($_GET['ordem']) ? $_GET['ordem'] : 'DESC';
-$colunas_permitidas_ordenacao = ['id', 'nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2', 'cargo'];
+$ordem = isset($_GET['ordem']) ? $_GET['ordem'] : 'ASC';
+// Definir colunas permitidas para ordenação para funcionários
+$colunas_permitidas_ordenacao = ['id', 'nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2'];
 
 if (!in_array($ordenar_por, $colunas_permitidas_ordenacao)) {
     $ordenar_por = 'id';
 }
 
+$ordenar_por = $_GET['ordenar_por'] ?? 'id';
+$ordem = $_GET['ordem'] ?? 'ASC';
+// Definir colunas permitidas para ordenação para funcionários (repetição, pode ser simplificado)
+$colunas_permitidas_ordenacao = ['nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2'];
+
+if (!in_array($ordenar_por, $colunas_permitidas_ordenacao)) {
+    $ordenar_por = 'nome';
+}
+
 $ordem = ($ordem === 'ASC') ? 'ASC' : 'DESC';
-$sql = "SELECT id, " . $colunas_sql . " FROM funcionario WHERE 1=1";
+// Alterar nome da tabela de Cliente para funcionario e ajustar condição de busca
+$sql = "SELECT id, " . implode(", ", $colunas_selecionadas) . " FROM funcionario WHERE 1=1";
 
 if (!empty($search)) {
     $search = $conn->real_escape_string($search);
-    $sql .= " AND (nome LIKE '%$search%' OR email LIKE '%$search%' OR morada LIKE '%$search%' OR localidade LIKE '%$search%' OR telefone1 LIKE '%$search%' OR telefone2 LIKE '%$search%')";
+    $sql .= " AND (nome LIKE '%$search%' OR email LIKE '%$search%' OR morada LIKE '%$search%' OR localidade LIKE '%$search%' OR telefone1 LIKE '%$search%' OR telefone2 LIKE '%$search%')"; // Ajustar campos de busca para funcionários
 }
 
 $sql .= " ORDER BY $ordenar_por $ordem";
 $resultado = $conn->query($sql);
+// Alterar nome da variável de clientes para funcionarios
 $funcionarios = $resultado->fetch_all(MYSQLI_ASSOC);
 $conn->close();
 
 ob_start();
 ?>
 
+<style>
+    /* Hide the table initially without affecting layout using opacity */
+    #datatablesSimple {
+        opacity: 0;
+    }
+</style>
+
 <div class="container py-4">
-
-    <!-- Modal de Confirmação -->
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
-                <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title" id="confirmDeleteLabel">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Atenção: Eliminação de Funcionário
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center py-4">
-                    <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
-                    <h4 class="mt-3 mb-3">Tem certeza que deseja eliminar este funcionário?</h4>
-                    <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
-                </div>
-                <div class="modal-footer border-0 justify-content-center pb-4">
-                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
-                        <i class="bi bi-x-circle me-2"></i>Cancelar
-                    </button>
-                    <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn" style="border-radius: 8px;">
-                        <i class="bi bi-trash me-2"></i>Eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="mb-4 d-flex align-items-center">
-    <form method="GET" action="funcionarios.php" class="d-flex align-items-center flex-grow-1" id="searchForm">
-        <input type="text" name="search" class="form-control me-2 w-100 fs-5" placeholder="Pesquisar funcionários..." 
-               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>" 
-               id="searchInput">
-        <a href="funcionarios.php?clear=1" class="btn btn-secondary ms-2 fs-5">Limpar</a>
-    </form>
-
-    <!-- Dropdown com filtros -->
-    <div class="dropdown ms-2">
-        <button class="btn btn-outline-dark dropdown-toggle fs-5" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
-            Selecionar Colunas
-        </button>
-        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkNome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkEmail" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkMorada" <?php echo in_array('morada', $colunas_selecionadas) ? 'checked' : ''; ?>> Morada
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkLocalidade" <?php echo in_array('localidade', $colunas_selecionadas) ? 'checked' : ''; ?>> Localidade
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkTelefone1" <?php echo in_array('telefone1', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 1
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkTelefone2" <?php echo in_array('telefone2', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 2
-                </label>
-            </li>
-            <li>
-                <label class="dropdown-item fs-5">
-                    <input type="checkbox" class="form-check-input me-2" id="checkCargo" <?php echo in_array('cargo', $colunas_selecionadas) ? 'checked' : ''; ?>> Cargo
-                </label>
-            </li>
-        </ul>
-    </div>
-
-    <!-- Botão para adicionar funcionário -->
-    <a href="adicionar_funcionario.php" class="btn btn-success ms-2 fs-5">Adicionar Funcionário</a>
-
-    <!-- Botão para imprimir -->
-    <button class="btn btn-primary ms-2 fs-5" onclick="window.print()">Imprimir</button>
-</div>
-
-
     <?php if ($success_message): ?>
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
             <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <div class="d-flex align-items-center p-3">
                     <div class="toast-icon me-3">
@@ -173,54 +102,239 @@ ob_start();
                 </div>
             </div>
         </div>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var toastEl = document.getElementById('successToast');
-                var toast = new bootstrap.Toast(toastEl, {
-                    animation: true,
-                    autohide: true,
-                    delay: 3000
-                });
-                toast.show();
-            });
-        </script>
     <?php endif; ?>
 
-    <table class="table table-striped table-hover fs-5">
-    <thead class="table-dark">
-        <tr>
-            <?php foreach ($colunas_selecionadas as $coluna): ?>
-                <th data-column="<?php echo $coluna; ?>">
-                    <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => $coluna, 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                        <?php echo ucfirst($coluna); ?>
-                        <?php if (isset($_GET['ordenar_por']) && $_GET['ordenar_por'] == $coluna): ?>
-                            <?php echo ($ordem == 'ASC') ? '▲' : '▼'; ?>
-                        <?php endif; ?>
-                    </a>
-                </th>
-            <?php endforeach; ?>
-            <th>Ações</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($funcionarios as $funcionario): ?>
-            <tr>
-                <?php foreach ($colunas_selecionadas as $coluna): ?>
-                    <td><?php echo htmlspecialchars($funcionario[$coluna] ?? ''); ?></td>
-                <?php endforeach; ?>
-                <td>
-                    <a href="editar_funcionario.php?id=<?php echo urlencode($funcionario['id']); ?>" class="btn btn-warning btn-sm">Editar</a>
-                    <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $funcionario['id']; ?>">Eliminar</button>
-                </td>
-            </tr>
-        <?php endforeach; ?>
-    </tbody>
-</table>
+    <?php if ($error_message): ?>
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+            <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <div class="d-flex align-items-center p-3">
+                    <div class="toast-icon me-3">
+                        <i class="bi bi-exclamation-circle-fill fs-4"></i>
+                    </div>
+                    <div class="toast-body fs-5">
+                        <?php echo htmlspecialchars($error_message); ?>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
+                <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title" id="confirmDeleteLabel">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Atenção: Eliminação de Funcionário <!-- Alterado de Cliente para Funcionário -->
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
+                    <h4>Tem certeza que deseja eliminar este funcionário?</h4> <!-- Alterado de cliente para funcionário -->
+                    <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
+                </div>
+                <div class="modal-footer border-0 justify-content-center pb-4">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <form id="deleteForm" method="POST" action="eliminar_funcionario.php" style="display: inline;"> <!-- Alterado de eliminar_cliente.php para eliminar_funcionario.php -->
+                        <input type="hidden" name="id" id="deleteId">
+                        <button type="submit" class="btn btn-danger px-4" style="border-radius: 8px;">
+                            <i class="bi bi-trash me-2"></i>Eliminar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header py-3">
+            <h5 class="mb-0">Filtros</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="funcionario.php" id="filterForm" class="row g-3">
+                <!-- Pesquisa -->
+                <div class="col-md-4">
+                    <label for="searchInput" class="form-label fs-5">Pesquisar</label>
+                    <input type="text" name="search" id="searchInput" class="form-control form-control-lg" 
+                           value="<?php echo htmlspecialchars($search); ?>" 
+                           placeholder="Nome, email, morada, telefone...">
+                </div>
+                
+                <!-- Botões -->
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-primary btn-lg w-100" onclick="document.getElementById('filterForm').submit()">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                
+                <div class="col-12 mt-3">
+                    <div class="d-flex gap-2">
+                        <a href="funcionario.php?clear=1" class="btn btn-secondary btn-lg"> <!-- Alterado de clientes.php para funcionario.php -->
+                            <i class="bi bi-x-circle me-2"></i>Limpar Filtros
+                        </a>
+                        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                        <a href="adicionar_funcionario.php" class="btn btn-success btn-lg"> <!-- Alterado de adicionar_cliente.php para adicionar_funcionario.php -->
+                            <i class="bi bi-plus-lg me-2"></i>Adicionar Funcionário <!-- Alterado de Cliente para Funcionário -->
+                        </a>
+                        <?php } ?>
+                        <button class="btn btn-primary btn-lg" onclick="window.print()">
+                            <i class="bi bi-printer me-2"></i>Imprimir
+                        </button>
+                        <!-- Dropdown com filtros -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-columns-gap me-2"></i>Selecionar Colunas
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkNome" name="colunas[]" data-column="nome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" name="colunas[]" data-column="email" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkMorada" name="colunas[]" data-column="morada" <?php echo in_array('morada', $colunas_selecionadas) ? 'checked' : ''; ?>> Morada
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkLocalidade" name="colunas[]" data-column="localidade" <?php echo in_array('localidade', $colunas_selecionadas) ? 'checked' : ''; ?>> Localidade
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone1" name="colunas[]" data-column="telefone1" <?php echo in_array('telefone1', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 1
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone2" name="colunas[]" data-column="telefone2" <?php echo in_array('telefone2', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 2
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header py-3">
+            <h5 class="mb-0">Funcionários</h5> <!-- Alterado de Clientes para Funcionários -->
+        </div>
+        <div class="card-body p-4">
+            <table id="datatablesSimple" class="table table-hover fs-5">
+                <thead class="table-dark">
+                    <?php foreach ($colunas_selecionadas as $coluna): ?>
+                        <th class="py-3"><?php echo ucfirst($coluna); ?></th>
+                    <?php endforeach; ?> 
+                    <th class="py-3">Ações</th>
+                </thead>
+                <tfoot>
+                    <?php foreach ($colunas_selecionadas as $coluna): ?>
+                        <th class="py-3"><?php echo ucfirst($coluna); ?></th>
+                    <?php endforeach; ?>
+                    <th class="py-3">Ações</th>
+                </tfoot>
+                <tbody>
+                    <?php foreach ($funcionarios as $funcionario): ?>
+                        <tr>
+                            <?php foreach ($colunas_selecionadas as $coluna): ?>
+                                <td class="py-3"><?php echo htmlspecialchars($funcionario[$coluna] ?? ''); ?></td> <!-- Acesso por chave associativa -->
+                            <?php endforeach; ?>
+                            <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                                <td class="py-3">
+                                    <a href="editar_funcionario.php?id=<?php echo urlencode($funcionario['id']); ?>" class="btn btn-warning btn-sm">
+                                        <i class="bi bi-pencil-square me-1"></i>Editar
+                                    </a>
+                                    <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $funcionario['id']; ?>" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                                        <i class="bi bi-trash me-1"></i>Eliminar
+                                    </button>
+                                </td>
+                            <?php } ?>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script src="../assets/js/style.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
 
+<script>
+    window.addEventListener('DOMContentLoaded', event => {
+        const datatablesSimple = document.getElementById('datatablesSimple');
+        if (datatablesSimple) {
+            new simpleDatatables.DataTable(datatablesSimple, {
+                searchable: false,
+                perPage: 10,
+                perPageSelect: [10, 25, 50, 100],
+                labels: {
+                    placeholder: "Pesquisar...",
+                    perPage: "Itens por página",
+                    noRows: "Nenhum funcionário encontrado",
+                    info: "Mostrando {start} até {end} de {rows} funcionários",
+                    noResults: "Nenhum resultado encontrado para {query}"
+                }
+            });
+
+            // Show the table after DataTables has initialized by changing opacity
+            datatablesSimple.style.opacity = '1';
+        }
+
+        // Add event listeners for delete buttons
+        document.querySelectorAll('.btn-eliminar').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                confirmDelete(id);
+            });
+        });
+
+        // Inicializar toasts
+        const successToast = document.getElementById('successToast');
+        const errorToast = document.getElementById('errorToast');
+        
+        if (successToast) {
+            new bootstrap.Toast(successToast, {
+                animation: true,
+                autohide: true,
+                delay: 3000
+            }).show();
+        }
+        
+        if (errorToast) {
+            new bootstrap.Toast(errorToast, {
+                animation: true,
+                autohide: true,
+                delay: 3000
+            }).show();
+        }
+    });
+
+    function confirmDelete(id) {
+        if (!id) {
+            console.error('ID inválido');
+            return;
+        }
+        document.getElementById('deleteId').value = id;
+        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+        modal.show();
+    }
+</script>
 
 <?php
 $content = ob_get_clean();

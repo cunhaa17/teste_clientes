@@ -19,31 +19,48 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 require_once '../includes/db_conexao.php';
 $title = 'Editar Serviço';
 
-if (isset($_GET['id'])) {
-    $id = $conn->real_escape_string($_GET['id']);
-    
-    // Buscar dados do serviço
-    $sql = "SELECT * FROM servico WHERE id = '$id'";
-    $result = $conn->query($sql);
-    
-    if ($result->num_rows === 0) {
-        $_SESSION['mensagem'] = "Serviço não encontrado.";
-        header("Location: servico.php");
-        exit();
-    }
-    
-    $servico = $result->fetch_assoc();
-} else {
+// Validar e obter ID
+if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]])) {
+    $_SESSION['mensagem'] = "ID inválido.";
     header("Location: servico.php");
     exit();
 }
 
+$id = intval($_GET['id']);
+
+// Buscar dados do serviço
+$sql = "SELECT * FROM servico WHERE id = '" . $conn->real_escape_string($id) . "'";
+$result = $conn->query($sql);
+
+if ($result->num_rows === 0) {
+    $_SESSION['mensagem'] = "Serviço não encontrado.";
+    header("Location: servico.php");
+    exit();
+}
+
+$servico = $result->fetch_assoc();
+
+// Processar formulário
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = $conn->real_escape_string($_POST['id']);
-    $nome = $conn->real_escape_string($_POST['nome']);
+    // Validar se o ID foi enviado
+    if (!isset($_POST['id']) || !filter_var($_POST['id'], FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]])) {
+        $_SESSION['mensagem'] = "ID inválido no formulário.";
+        header("Location: servico.php");
+        exit();
+    }
+    
+    $id_post = intval($_POST['id']);
+    $nome = trim($_POST['nome']);
+    
+    if (empty($nome)) {
+        $_SESSION['mensagem'] = "O nome do serviço é obrigatório.";
+        header("Location: editar_servico.php?id=" . $id);
+        exit();
+    }
     
     // Verificar se já existe um serviço com o mesmo nome
-    $sql_check = "SELECT id FROM servico WHERE nome = '$nome' AND id != '$id'";
+    $sql_check = "SELECT id FROM servico WHERE nome = '" . $conn->real_escape_string($nome) . "' 
+                  AND id != '" . $conn->real_escape_string($id_post) . "'";
     $result_check = $conn->query($sql_check);
     
     if ($result_check->num_rows > 0) {
@@ -53,9 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // Atualizar o serviço
-    $sql = "UPDATE servico SET nome = '$nome' WHERE id = '$id'";
+    $sql_update = "UPDATE servico SET nome = '" . $conn->real_escape_string($nome) . "' 
+                   WHERE id = '" . $conn->real_escape_string($id_post) . "'";
     
-    if ($conn->query($sql)) {
+    if ($conn->query($sql_update)) {
         $_SESSION['success'] = "Serviço atualizado com sucesso!";
         header("Location: servico.php");
         exit();
@@ -66,19 +84,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+$conn->close();
+
 ob_start();
 ?>
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Editar Serviço</h1>
         <a href="servico.php" class="btn btn-secondary">Voltar</a>
     </div>
 
-    <?php if (isset($_SESSION['error'])): ?>
+    <?php if (isset($_SESSION['mensagem'])): ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <?php 
-            echo $_SESSION['error'];
-            unset($_SESSION['error']);
+            echo htmlspecialchars($_SESSION['mensagem']);
+            unset($_SESSION['mensagem']);
             ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -87,12 +108,16 @@ ob_start();
     <div class="card">
         <div class="card-body">
             <form method="POST" action="editar_servico.php?id=<?php echo $id; ?>">
+                <input type="hidden" name="id" value="<?php echo htmlspecialchars($id); ?>">
+                
                 <div class="mb-3">
                     <label for="nome" class="form-label">Nome do Serviço *</label>
-                    <input type="text" class="form-control" id="nome" name="nome" value="<?php echo htmlspecialchars($servico['nome']); ?>" required>
+                    <input type="text" class="form-control" id="nome" name="nome" 
+                           value="<?php echo htmlspecialchars($servico['nome']); ?>" required>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Atualizar Serviço</button>
+                <a href="servico.php" class="btn btn-secondary">Cancelar</a>
             </form>
         </div>
     </div>

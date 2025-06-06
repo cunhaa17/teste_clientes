@@ -16,6 +16,15 @@ if (!isset($_GET['servico_id']) || empty($_GET['servico_id'])) {
 
 $servico_id = $conn->real_escape_string($_GET['servico_id']);
 
+// Filter and column settings
+$colunas_permitidas = ['nome', 'descricao', 'preco', 'duracao'];
+$colunas_selecionadas = isset($_GET['colunas']) ? $_GET['colunas'] : ['nome', 'descricao', 'preco', 'duracao'];
+$colunas_selecionadas = array_intersect($colunas_selecionadas, $colunas_permitidas);
+
+if (empty($colunas_selecionadas)) {
+    $colunas_selecionadas = ['nome', 'descricao', 'preco', 'duracao'];
+}
+
 // Buscar subtipos do serviço
 $sql = "SELECT id, nome, descricao, preco, duracao 
         FROM servico_subtipo 

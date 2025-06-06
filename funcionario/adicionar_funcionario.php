@@ -83,10 +83,6 @@ ob_start();
                     <label class="form-label">Telefone 2:</label>
                     <input type="tel" name="telefone2" class="form-control" pattern="[0-9]{9}">
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Cargo:</label>
-                    <input type="text" name="cargo" class="form-control" required>
-                </div>
                 <button type="submit" class="btn btn-primary">Guardar</button>
             </form>
         </div>

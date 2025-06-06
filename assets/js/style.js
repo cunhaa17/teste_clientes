@@ -6,11 +6,27 @@ document.addEventListener('DOMContentLoaded', function () {
         toast.show();
     }
 
+    // Search functionality - only run if we're on a page with search
     const searchInput = document.getElementById('searchInput');
     const resultsContainer = document.querySelector('tbody');
     const checkboxes = document.querySelectorAll('.form-check-input');
 
     if (searchInput && resultsContainer) {
+        let searchTimeout;
+
+        function updateColumnVisibility() {
+            const selectedColumns = Array.from(checkboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.id.replace('check', '').toLowerCase());
+
+            document.querySelectorAll('th, td').forEach(cell => {
+                const column = cell.getAttribute('data-column');
+                if (column) {
+                    cell.style.display = selectedColumns.includes(column) ? '' : 'none';
+                }
+            });
+        }
+
         function updateTable() {
             const query = searchInput.value.trim();
             const selectedColumns = Array.from(checkboxes)
@@ -34,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (newTableBody) {
                         resultsContainer.innerHTML = newTableBody.innerHTML;
                         updateColumnVisibility();
+                        // Re-attach delete event listeners to new buttons
+                        attachDeleteEventListeners();
                     }
                 })
                 .catch(error => {
@@ -42,98 +60,243 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
         }
 
-        function updateColumnVisibility() {
-            const selectedColumns = Array.from(checkboxes)
-                .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.id.replace('check', '').toLowerCase());
+        // Add debounce to search input
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(updateTable, 300); // 300ms delay
+        });
 
-            document.querySelectorAll('th, td').forEach(cell => {
-                const column = cell.getAttribute('data-column');
-                if (column) {
-                    cell.style.display = selectedColumns.includes(column) ? '' : 'none';
-                }
-            });
-        }
-
-        searchInput.addEventListener('input', updateTable);
         checkboxes.forEach(checkbox => {
             checkbox.addEventListener('change', updateTable);
         });
-    } else {
-        console.error("Elemento de pesquisa ou container de resultados não encontrado!");
+
+        // Initial column visibility update
+        updateColumnVisibility();
     }
 
-    // Lógica de Exclusão
+    // Delete functionality
     let itemIdToDelete = null;
 
-    document.querySelectorAll(".btn-eliminar").forEach(button => {
-        button.addEventListener("click", function () {
-            itemIdToDelete = this.getAttribute("data-id");
-            let modalElement = document.getElementById("confirmDeleteModal");
+    // Function to attach delete event listeners
+    function attachDeleteEventListeners() {
+        document.querySelectorAll(".btn-eliminar").forEach(button => {
+            // Remove existing listeners to avoid duplicates
+            button.removeEventListener("click", handleDeleteClick);
+            button.addEventListener("click", handleDeleteClick);
+        });
+    }
+
+    // Delete button click handler
+    function handleDeleteClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        itemIdToDelete = this.getAttribute("data-id");
+        console.log("Delete button clicked, ID:", itemIdToDelete);
+        
+        let modalElement = document.getElementById("confirmDeleteModal");
+        if (modalElement) {
+            let modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    }
+
+    // Initial attachment of delete event listeners
+    attachDeleteEventListeners();
+
+    // Handle delete confirmation
+    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (itemIdToDelete) {
+                // Determine the correct delete URL based on the current page filename
+                let deleteUrl;
+                const currentPath = window.location.pathname;
+                const fileName = currentPath.split('/').pop(); // Get just the filename
+                console.log("Current path:", currentPath);
+                console.log("Current filename:", fileName);
+                
+                // Get the base path
+                const basePath = window.location.pathname.substring(0, window.location.pathname.indexOf('/dashboard_pap') + '/dashboard_pap'.length);
+                console.log("Base path:", basePath);
+                
+                // Map filenames to their corresponding delete URLs
+                if (fileName === 'funcionario.php') {
+                    deleteUrl = basePath + "/funcionario/eliminar_funcionario.php";
+                } else if (fileName === 'servico.php') {
+                    deleteUrl = basePath + "/servico/eliminar_servico.php";
+                } else if (fileName === 'clientes.php') {
+                    deleteUrl = basePath + "/cliente/eliminar_cliente.php";
+                } else if (fileName === 'reservas.php') {
+                    deleteUrl = basePath + "/reservas/eliminar_reserva.php";
+                } else if (fileName === 'horarios.php') {
+                    deleteUrl = basePath + "/horarios/eliminar_horario.php";
+                } else if (fileName === 'subservico.php') {
+                    deleteUrl = basePath + "/servico/eliminar_subservico.php";
+                } else if (fileName === 'agenda.php') {
+                    deleteUrl = basePath + "/agenda/eliminar_agenda.php";
+                } else if (fileName === 'funcionario_servicos.php') {
+                    deleteUrl = basePath + "/funcionario/eliminar_associacao.php";
+                } else if (currentPath.includes("/funcionario/")) {
+                    deleteUrl = basePath + "/funcionario/eliminar_funcionario.php";
+                } else if (currentPath.includes("/servico/")) {
+                    deleteUrl = basePath + "/servico/eliminar_servico.php";
+                } else if (currentPath.includes("/cliente/")) {
+                    deleteUrl = basePath + "/cliente/eliminar_cliente.php";
+                } else if (currentPath.includes("/reservas/")) {
+                    deleteUrl = basePath + "/reservas/eliminar_reserva.php";
+                } else if (currentPath.includes("/horarios/")) {
+                    deleteUrl = basePath + "/horarios/eliminar_horario.php";
+                } else if (currentPath.includes("/subservico/")) {
+                    deleteUrl = basePath + "/servico/eliminar_subservico.php";
+                } else if (currentPath.includes("/agenda/")) {
+                    deleteUrl = basePath + "/agenda/eliminar_agenda.php";
+                } else if (currentPath.includes("/funcionario_servicos/")) {
+                    deleteUrl = basePath + "/funcionario/eliminar_associacao.php";
+                }
+
+                console.log("Selected delete URL:", deleteUrl);
+
+                if (deleteUrl) {
+                    console.log("Sending delete request to:", deleteUrl, "with ID:", itemIdToDelete);
+                    
+                    // Show loading state
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Eliminando...';
+                    this.disabled = true;
+                    
+                    fetch(deleteUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `id=${encodeURIComponent(itemIdToDelete)}`
+                    })
+                    .then(response => {
+                        console.log("Response status:", response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log("Response data:", data);
+                        
+                        // Reset button state
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                        
+                        // Close modal
+                        let modalElement = document.getElementById("confirmDeleteModal");
+                        let modal = bootstrap.Modal.getInstance(modalElement);
+                        if (modal) {
+                            modal.hide();
+                        }
+                        
+                        // Clean up modal backdrop
+                        setTimeout(() => {
+                            document.querySelector('.modal-backdrop')?.remove();
+                            document.body.classList.remove('modal-open');
+                            document.body.style.overflow = '';
+                            document.body.style.paddingRight = '';
+                        }, 300);
+
+                        if (data.status === "success") {
+                            // Show success message and reload page
+                            showToast(data.message || "Item eliminado com sucesso!", "bg-success");
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            showToast(data.message || "Erro ao eliminar item.", "bg-danger");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        
+                        // Reset button state
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                        
+                        showToast("Erro na requisição. Tente novamente.", "bg-danger");
+                        
+                        // Close modal on error
+                        let modalElement = document.getElementById("confirmDeleteModal");
+                        let modal = bootstrap.Modal.getInstance(modalElement);
+                        if (modal) {
+                            modal.hide();
+                        }
+                    });
+                } else {
+                    console.error("Could not determine delete URL for current page");
+                    showToast("Erro: não foi possível determinar a URL de eliminação.", "bg-danger");
+                }
+            }
+        });
+    }
+
+    // Handle modal close
+    const closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modalElement = document.getElementById("confirmDeleteModal");
             if (modalElement) {
-                let modal = new bootstrap.Modal(modalElement);
-                modal.show();
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) {
+                    modal.hide();
+                    // Clean up modal backdrop
+                    setTimeout(() => {
+                        document.querySelector('.modal-backdrop')?.remove();
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
+                    }, 300);
+                }
             }
         });
     });
 
-    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener("click", function () {
-            if (itemIdToDelete) {
-                let url;
-                if (window.location.pathname.includes("funcionario")) {
-                    url = "eliminar_funcionario.php";
-                } else if (window.location.pathname.includes("servico")) {
-                    url = "eliminar_servico.php";
-                } else if (window.location.pathname.includes("cliente")) {
-                    url = "eliminar_cliente.php";
-                } else if (window.location.pathname.includes("reservas")) {
-                    url = "eliminar_reserva.php";
-                }
-
-                fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: `id=${itemIdToDelete}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    let modalElement = document.getElementById("confirmDeleteModal");
-                    let modal = bootstrap.Modal.getInstance(modalElement);
-                    modal.hide();
-
-                    if (data.status === "success") {
-                        let row = document.querySelector(`button[data-id='${itemIdToDelete}']`).closest("tr");
-                        row.classList.add("table-danger");
-                        setTimeout(() => row.remove(), 500);
-                        showToast("Eliminado com sucesso!", "bg-success");
-                    } else {
-                        showToast("Erro ao eliminar item.", "bg-warning");
-                    }
-                })
-                .catch(error => showToast("Erro na requisição.", "bg-dark"));
-            }
-        });
-    }
-
     function showToast(message, colorClass) {
-        let toastElement = document.getElementById("deleteToast");
-        if (!toastElement) return;
+        // Create toast container if it doesn't exist
+        let toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '1050';
+            document.body.appendChild(toastContainer);
+        }
 
-        // Update toast structure with modern style
+        // Create toast element
+        const toastId = 'toast-' + Date.now();
+        const toastElement = document.createElement('div');
+        toastElement.id = toastId;
         toastElement.className = "toast align-items-center text-white border-0";
-        toastElement.style.background = colorClass === "bg-success" 
-            ? "linear-gradient(45deg, #28a745, #20c997)" 
-            : "linear-gradient(45deg, #dc3545, #c82333)";
+        toastElement.setAttribute('role', 'alert');
+        toastElement.setAttribute('aria-live', 'assertive');
+        toastElement.setAttribute('aria-atomic', 'true');
+        
+        // Set background color
+        if (colorClass === "bg-success") {
+            toastElement.style.background = "linear-gradient(45deg, #28a745, #20c997)";
+        } else if (colorClass === "bg-danger") {
+            toastElement.style.background = "linear-gradient(45deg, #dc3545, #c82333)";
+        } else {
+            toastElement.style.background = "linear-gradient(45deg, #ffc107, #fd7e14)";
+        }
+        
         toastElement.style.borderRadius = "10px";
         toastElement.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
 
-        // Update toast content
+        // Set toast content
+        const iconClass = colorClass === "bg-success" ? "bi-check-circle-fill" : 
+                         colorClass === "bg-danger" ? "bi-exclamation-circle-fill" : "bi-info-circle-fill";
+        
         toastElement.innerHTML = `
             <div class="d-flex align-items-center p-3">
                 <div class="toast-icon me-3">
-                    <i class="bi ${colorClass === "bg-success" ? "bi-check-circle-fill" : "bi-exclamation-circle-fill"} fs-4"></i>
+                    <i class="bi ${iconClass} fs-4"></i>
                 </div>
                 <div class="toast-body fs-5">
                     ${message}
@@ -142,15 +305,24 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         `;
 
+        // Add to container and show
+        toastContainer.appendChild(toastElement);
+        
         let toast = new bootstrap.Toast(toastElement, {
             animation: true,
             autohide: true,
             delay: 3000
         });
+        
         toast.show();
+        
+        // Remove element after hiding
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
     }
 
-    // **Correção do filtro por data**
+    // Date filter functionality - only run if we're on a page with date filtering
     const dateHeader = document.getElementById("dateHeader");
     const datePickerModal = document.getElementById("datePickerModal");
     const datepicker = document.getElementById("datepicker");
@@ -172,110 +344,62 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Evento ao clicar em "Aplicar"
         document.getElementById("applyDate").addEventListener("click", function () {
-            const selectedDate = datepicker.value.trim(); // Obtém a data selecionada
+            const selectedDate = datepicker.value.trim();
             if (selectedDate) {
                 const rows = reservasTableBody.querySelectorAll("tr");
                 rows.forEach(row => {
-                    const dateCell = row.cells[2].textContent.trim(); // Terceira célula contém a data (ajustar índice se necessário)
-                    
-                    // Converte a data da célula para YYYY-MM-DD
+                    const dateCell = row.cells[2].textContent.trim();
                     const formattedDate = dateCell.split("/").reverse().join("-"); 
-
-                    // Exibe ou oculta as linhas conforme a data selecionada
                     row.style.display = formattedDate === selectedDate ? "" : "none";
                 });
 
-                // Fecha o modal corretamente
                 const modal = bootstrap.Modal.getInstance(datePickerModal);
                 modal.hide();
             } else {
                 alert("Por favor, selecione uma data.");
             }
         });
-    } else {
-        console.error("Elementos necessários para o filtro por data não foram encontrados!");
     }
 
-    // Handle subservice expansion
-    document.querySelectorAll('.btn-expand').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var servicoId = this.getAttribute('data-servico-id');
-            var row = document.getElementById('subservicos-' + servicoId);
-            var contentDiv = row.querySelector('.subservicos-content');
+    // Handle subservice expansion - only run if we're on a page with subservices
+    const expandButtons = document.querySelectorAll('.btn-expand');
+    if (expandButtons.length > 0) {
+        expandButtons.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var servicoId = this.getAttribute('data-servico-id');
+                var row = document.getElementById('subservicos-' + servicoId);
+                var contentDiv = row.querySelector('.subservicos-content');
 
-            if (row.style.display === 'none') {
-                // Fetch subservices via AJAX
-                fetch('get_subtipos.php?servico_id=' + servicoId)
-                    .then(response => response.text())
-                    .then(html => {
-                        contentDiv.innerHTML = html;
-                        row.style.display = '';
-                        this.textContent = '-';
-                        
-                        // Add event listeners for delete buttons
-                        let subservicoIdToDelete = null;
-                        
-                        document.querySelectorAll('.btn-eliminar-subservico').forEach(function(deleteBtn) {
-                            deleteBtn.addEventListener('click', function() {
-                                subservicoIdToDelete = this.getAttribute('data-id');
-                                let modalElement = document.getElementById('confirmDeleteSubservicoModal');
-                                let modal = new bootstrap.Modal(modalElement);
-                                modal.show();
+                if (row.style.display === 'none') {
+                    fetch('get_subtipos.php?servico_id=' + servicoId)
+                        .then(response => response.text())
+                        .then(html => {
+                            contentDiv.innerHTML = html;
+                            row.style.display = '';
+                            this.textContent = '-';
+                            
+                            let subservicoIdToDelete = null;
+                            
+                            document.querySelectorAll('.btn-eliminar-subservico').forEach(function(deleteBtn) {
+                                deleteBtn.addEventListener('click', function() {
+                                    subservicoIdToDelete = this.getAttribute('data-id');
+                                    let modalElement = document.getElementById('confirmDeleteSubservicoModal');
+                                    let modal = new bootstrap.Modal(modalElement);
+                                    modal.show();
+                                });
                             });
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Erro ao carregar subtipos de serviço');
                         });
-
-                        // Handle subservice deletion confirmation
-                        const confirmDeleteSubservicoBtn = document.getElementById('confirmDeleteSubservicoBtn');
-                        if (confirmDeleteSubservicoBtn) {
-                            confirmDeleteSubservicoBtn.addEventListener('click', function() {
-                                if (subservicoIdToDelete) {
-                                    var formData = new FormData();
-                                    formData.append('id', subservicoIdToDelete);
-
-                                    fetch('eliminar_subservico.php', {
-                                        method: 'POST',
-                                        body: formData
-                                    })
-                                    .then(response => response.json())
-                                    .then(data => {
-                                        let modalElement = document.getElementById('confirmDeleteSubservicoModal');
-                                        let modal = bootstrap.Modal.getInstance(modalElement);
-                                        modal.hide();
-
-                                        if (data.status === 'success') {
-                                            // Remove the row from the table
-                                            let row = document.querySelector(`button[data-id='${subservicoIdToDelete}']`).closest('tr');
-                                            row.classList.add('table-danger');
-                                            setTimeout(() => row.remove(), 500);
-                                            
-                                            // Show success message
-                                            var toast = document.getElementById('subservicoToast');
-                                            var toastBody = toast.querySelector('.toast-body');
-                                            toastBody.textContent = data.message;
-                                            var bsToast = new bootstrap.Toast(toast);
-                                            bsToast.show();
-                                        } else {
-                                            alert(data.message);
-                                        }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error:', error);
-                                        alert('Erro ao eliminar subtipo de serviço');
-                                    });
-                                }
-                            });
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('Erro ao carregar subtipos de serviço');
-                    });
-            } else {
-                row.style.display = 'none';
-                this.textContent = '+';
-            }
+                } else {
+                    row.style.display = 'none';
+                    this.textContent = '+';
+                }
+            });
         });
-    });
+    }
 
     // Only run this block if on the reservas page (checks for the filter form)
     if (document.getElementById('filterForm')) {
@@ -297,36 +421,92 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // Confirmar exclusão
-        const btnEliminar = document.querySelectorAll('.btn-eliminar');
-        const confirmDeleteModalEl = document.getElementById('confirmDeleteModal');
-        let confirmDeleteModal = null;
-        if (confirmDeleteModalEl) {
-            confirmDeleteModal = new bootstrap.Modal(confirmDeleteModalEl);
-        }
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        let reservaId;
-        btnEliminar.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                reservaId = this.getAttribute('data-id');
-                if (confirmDeleteModal) confirmDeleteModal.show();
-            });
-        });
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', function() {
-                window.location.href = 'excluir_reserva.php?id=' + reservaId;
-            });
-        }
-
         // Alterar status
         const statusLinks = document.querySelectorAll('.alter-status');
         statusLinks.forEach(function(link) {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
+                
                 const id = this.getAttribute('data-id');
                 const status = this.getAttribute('data-status');
-                window.location.href = 'alterar_status_reserva.php?id=' + id + '&status=' + status;
+                
+                fetch('atualizar.reserva.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `id=${id}&status=${status}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const statusCell = document.querySelector(`button[data-id='${id}']`).closest('tr').querySelector('td:nth-child(3)');
+                        if (statusCell) {
+                            let statusClass = '';
+                            switch (status) {
+                                case 'pendente':
+                                    statusClass = 'bg-warning text-dark';
+                                    break;
+                                case 'confirmada':
+                                    statusClass = 'bg-info text-dark';
+                                    break;
+                                case 'cancelada':
+                                    statusClass = 'bg-danger text-white';
+                                    break;
+                                case 'concluída':
+                                    statusClass = 'bg-success text-white';
+                                    break;
+                            }
+                            statusCell.innerHTML = `<span class="badge ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+                        }
+                        showToast("Status atualizado com sucesso!", "bg-success");
+                    } else {
+                        showToast(data.message || "Erro ao atualizar status.", "bg-warning");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast("Erro ao atualizar status.", "bg-dark");
+                });
             });
         });
     }
-}); 
+
+    // Handle accordion expansion - only run if we're on a page with accordions
+    const accordionButtons = document.querySelectorAll('.btn-expand');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    if (accordionButtons.length > 0 && loadingIndicator) {
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                loadingIndicator.style.display = 'block';
+                setTimeout(() => {
+                    loadingIndicator.style.display = 'none';
+                }, 500);
+            });
+        });
+    }
+
+    /**
+     * Animate a regressive progress bar for a Bootstrap toast.
+     * @param {HTMLElement} toastEl - The toast element (with id 'successToast' or 'errorToast')
+     * @param {HTMLElement} progressBar - The progress bar element inside the toast
+     * @param {number} duration - Duration in ms (default 3000)
+     */
+    function animateToastProgressBar(toastEl, progressBar, duration = 3000) {
+        if (!toastEl || !progressBar) return;
+        let width = 100;
+        const intervalTime = 30;
+        const toast = new bootstrap.Toast(toastEl, { autohide: false });
+        toast.show();
+        const interval = setInterval(() => {
+            width -= (intervalTime / duration) * 100;
+            progressBar.style.width = width + "%";
+            if (width <= 0) {
+                clearInterval(interval);
+                toast.hide();
+            }
+        }, intervalTime);
+    }
+});

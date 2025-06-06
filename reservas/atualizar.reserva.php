@@ -2,11 +2,37 @@
 session_start();
 include_once '../includes/db_conexao.php';
 
-if (!isset($_SESSION['utilizador_id']) || $_SESSION['utilizador_tipo'] !== 'admin') {
+if (!isset($_SESSION['utilizador_id']) || ($_SESSION['utilizador_tipo'] !== 'admin' && $_SESSION['utilizador_tipo'] !== 'funcionario')) {
     header("Location: ../login.php");
     exit();
 }
 
+// Se for uma requisição AJAX para atualizar status
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id']) && isset($_POST['status'])) {
+    header('Content-Type: application/json');
+    
+    $id = $conn->real_escape_string($_POST['id']);
+    $status = $conn->real_escape_string($_POST['status']);
+    
+    // Validar status
+    $status_permitidos = ['pendente', 'confirmada', 'cancelada', 'concluída'];
+    if (!in_array($status, $status_permitidos)) {
+        echo json_encode(['status' => 'error', 'message' => 'Status inválido']);
+        exit();
+    }
+    
+    // Atualizar o status da reserva
+    $sql = "UPDATE reserva SET status = '$status' WHERE id = '$id'";
+    
+    if ($conn->query($sql)) {
+        echo json_encode(['status' => 'success', 'message' => 'Status atualizado com sucesso']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Erro ao atualizar status: ' . $conn->error]);
+    }
+    exit();
+}
+
+// Se for uma requisição normal para editar reserva
 if (!isset($_GET['id'])) {
     echo "Reserva não encontrada.";
     exit();
@@ -91,7 +117,7 @@ ob_start();
         </div>
         <div class="mb-3">
             <label for="observacao" class="form-label">Observação</label>
-            <textarea class="form-control" id="observacao" name="observacao"><?= htmlspecialchars($reserva['observacao']) ?></textarea>
+            <textarea class="form-control" id="observacao" name="observacao" rows="3"><?= htmlspecialchars($reserva['observacao'] ?? '') ?></textarea>
         </div>
         <button type="submit" class="btn btn-primary">Salvar</button>
         <a href="reservas.php" class="btn btn-secondary">Cancelar</a>
@@ -100,28 +126,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 include '../includes/layout.php';
-
-if (isset($_POST['id'])) {
-    $reserva_id = $conn->real_escape_string($_POST['id']);
-    
-    // Verificar se a reserva existe
-    $sql_check = "SELECT id FROM reserva WHERE id = '$reserva_id'";
-    $result_check = $conn->query($sql_check);
-    
-    if ($result_check->num_rows === 0) {
-        echo json_encode(['status' => 'error', 'message' => 'Reserva não encontrada']);
-        exit();
-    }
-    
-    // Atualizar a reserva
-    $sql = "UPDATE reserva SET status = 'cancelada' WHERE id = '$reserva_id'";
-    
-    if ($conn->query($sql)) {
-        echo json_encode(['status' => 'success', 'message' => 'Reserva cancelada com sucesso']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Erro ao cancelar reserva: ' . $conn->error]);
-    }
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'Requisição inválida']);
-}
-?>
+?> 

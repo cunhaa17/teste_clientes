@@ -34,7 +34,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $localidade = $conn->real_escape_string($_POST['localidade']);
     $telefone1 = $conn->real_escape_string($_POST['telefone1']);
     $telefone2 = $conn->real_escape_string($_POST['telefone2']);
-    $cargo = $conn->real_escape_string($_POST['cargo']);
 
     // Check for duplicates
     $query = "SELECT * FROM funcionario WHERE (email = '$email' OR telefone1 = '$telefone1') AND id != '$id'";
@@ -43,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($result->num_rows > 0) {
         $_SESSION['error'] = 'O email ou telefone já estão registados.';
     } else {
-        $query = "UPDATE funcionario SET nome = '$nome', email = '$email', morada = '$morada', localidade = '$localidade', telefone1 = '$telefone1', telefone2 = '$telefone2', cargo = '$cargo' WHERE id = '$id'";
+        $query = "UPDATE funcionario SET nome = '$nome', email = '$email', morada = '$morada', localidade = '$localidade', telefone1 = '$telefone1', telefone2 = '$telefone2' WHERE id = '$id'";
         
         if($conn->query($query)) {
             $_SESSION['success'] = 'Funcionário atualizado com sucesso!';
@@ -100,11 +99,6 @@ ob_start();
                 <div class="mb-3">
                     <label class="form-label">Telefone 2</label>
                     <input type="text" name="telefone2" class="form-control" value="<?php echo $funcionario['telefone2']; ?>">
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label">Cargo</label>
-                    <input type="text" name="cargo" class="form-control" value="<?php echo $funcionario['cargo']; ?>" required>
                 </div>
 
                 <div class="text-end">

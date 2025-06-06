@@ -1,7 +1,9 @@
 <?php
-// Inclui o ficheiro de conexão à base de dados
-require_once '../includes/db_conexao.php';
 session_start();
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Verifica se a sessão está iniciada corretamente
 if (!isset($_SESSION['utilizador_id'])) {
@@ -15,55 +17,40 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-// Verifica se o formulário foi enviado
+include_once '../includes/db_conexao.php';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = trim($_POST['nome']);
-    $email = trim($_POST['email']);
-    $morada = trim($_POST['morada']);
-    $localidade = trim($_POST['localidade']);
-    $telefone1 = trim($_POST['telefone1']);
-    $telefone2 = trim($_POST['telefone2']);
-    $cargo = trim($_POST['cargo']);
+    // Coleta e sanitiza os dados do formulário
+    $nome = $conn->real_escape_string($_POST['nome'] ?? '');
+    $email = $conn->real_escape_string($_POST['email'] ?? '');
+    $morada = $conn->real_escape_string($_POST['morada'] ?? '');
+    $localidade = $conn->real_escape_string($_POST['localidade'] ?? '');
+    $telefone1 = $conn->real_escape_string($_POST['telefone1'] ?? '');
+    $telefone2 = $conn->real_escape_string($_POST['telefone2'] ?? '');
 
-    // Verifica se os campos obrigatórios foram preenchidos
-    if (empty($nome) || empty($email) || empty($telefone1)) {
-        $_SESSION['error'] = 'Por favor, preencha todos os campos obrigatórios.';
-        header('Location: adicionar_funcionario.php');
-        exit();
-    }
-
-    // Escapa os valores para evitar SQL injection
-    $nome = $conn->real_escape_string($nome);
-    $email = $conn->real_escape_string($email);
-    $morada = $conn->real_escape_string($morada);
-    $localidade = $conn->real_escape_string($localidade);
-    $telefone1 = $conn->real_escape_string($telefone1);
-    $telefone2 = $conn->real_escape_string($telefone2);
-    $cargo = $conn->real_escape_string($cargo);
-
-    // Verifica se o email ou telefone já existem no banco de dados
-    $query = "SELECT * FROM funcionario WHERE email = '$email' OR telefone1 = '$telefone1'";
-    $result = $conn->query($query);
-
-    if ($result->num_rows > 0) {
-        $_SESSION['error'] = 'O email ou telefone já estão registados.';
-        header('Location: adicionar_funcionario.php');
-        exit();
-    }
-
-    // Insere o novo funcionario no banco de dados
-    $query = "INSERT INTO funcionario (nome, email, morada, localidade, telefone1, telefone2, cargo) VALUES ('$nome', '$email', '$morada', '$localidade', '$telefone1', '$telefone2', '$cargo')";
-    
-    if ($conn->query($query)) {
-        $_SESSION['success'] = 'Funcionário adicionado com sucesso!';
-        header("Location: funcionario.php");
-        exit();
+    // Validação básica (pode adicionar mais validações conforme necessário)
+    if (empty($nome) || empty($email) || empty($morada) || empty($localidade) || empty($telefone1)) {
+        $_SESSION['mensagem'] = "Por favor, preencha todos os campos obrigatórios (Nome, Email, Morada, Localidade, Telefone 1).";
     } else {
-        $_SESSION['error'] = 'Erro ao adicionar funcionário. Tente novamente.';
+        // Prepara e executa a query SQL para inserir o novo funcionário
+        $sql = "INSERT INTO funcionario (nome, email, morada, localidade, telefone1, telefone2) VALUES ('$nome', '$email', '$morada', '$localidade', '$telefone1', '$telefone2')";
+
+        if ($conn->query($sql) === TRUE) {
+            $_SESSION['success'] = "Funcionário adicionado com sucesso!";
+        } else {
+            $_SESSION['mensagem'] = "Erro ao adicionar funcionário: " . $conn->error;
+            error_log("Erro ao inserir funcionário: " . $conn->error);
+        }
     }
 
-    // Redireciona para a página de adicionar funcionário
-    header('Location: funcionario.php');
+    $conn->close();
+
+    // Redireciona de volta para a página de listagem de funcionários
+    header("Location: funcionario.php");
+    exit();
+} else {
+    // Se a requisição não for POST, redireciona de volta para o formulário ou outra página
+    header("Location: adicionar_funcionario.php");
     exit();
 }
 ?>

@@ -28,10 +28,23 @@ if (isset($_GET['clear'])) {
     exit();
 }
 
-$mensagem = isset($_SESSION['mensagem']) ? $_SESSION['mensagem'] : '';
-$success_message = isset($_SESSION['success']) ? $_SESSION['success'] : '';
-unset($_SESSION['mensagem']);
-unset($_SESSION['success']);
+// CAPTURAR E LIMPAR AS MENSAGENS DE SESSÃO IMEDIATAMENTE
+$mensagem = '';
+$success_message = '';
+
+if (isset($_SESSION['mensagem'])) {
+    $mensagem = $_SESSION['mensagem'];
+    unset($_SESSION['mensagem']); // Limpar imediatamente após capturar
+}
+
+if (isset($_SESSION['success'])) {
+    $success_message = $_SESSION['success'];
+    unset($_SESSION['success']); // Limpar imediatamente após capturar
+}
+
+// Debug logging
+error_log("DEBUG: reservas.php - Mensagem de erro: " . $mensagem);
+error_log("DEBUG: reservas.php - Mensagem de sucesso: " . $success_message);
 
 // Configurações de filtro e paginação
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -41,12 +54,24 @@ $data_fim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';
 
 // Colunas e ordenação
 $colunas_selecionadas = isset($_GET['colunas']) ? explode(',', $_GET['colunas']) : 
-    ['id', 'data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario'];
+    ['data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario'];
 $colunas_permitidas = ['id', 'data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario', 'observacao'];
 $colunas_selecionadas = array_intersect($colunas_selecionadas, $colunas_permitidas);
 
+// Ensure 'data_reserva' is always included and is the first column
+if (!in_array('data_reserva', $colunas_selecionadas)) {
+    array_unshift($colunas_selecionadas, 'data_reserva');
+} else {
+    // If already present, ensure it's the first element
+    $colunas_selecionadas = array('data_reserva') + array_diff($colunas_selecionadas, array('data_reserva'));
+}
+
 if (empty($colunas_selecionadas)) {
-    $colunas_selecionadas = ['id', 'data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario'];
+    // Fallback to default if somehow empty, still ensuring data_reserva is first
+    $colunas_selecionadas = ['data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario'];
+} else if ($colunas_selecionadas[0] !== 'data_reserva') {
+     // Ensure data_reserva is the first element if not already
+     $colunas_selecionadas = array('data_reserva') + array_diff($colunas_selecionadas, array('data_reserva'));
 }
 
 $ordenar_por = isset($_GET['ordenar_por']) ? $_GET['ordenar_por'] : 'data_reserva';
@@ -119,6 +144,16 @@ ob_start();
 .btn-group {
     position: relative;
 }
+
+/* Melhorar o estilo dos toasts */
+.toast-container {
+    z-index: 1055 !important;
+}
+
+.toast {
+    min-width: 350px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
 </style>
 
 <div class="container py-4">
@@ -142,17 +177,20 @@ ob_start();
                     <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
                         <i class="bi bi-x-circle me-2"></i>Cancelar
                     </button>
-                    <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn" style="border-radius: 8px;">
-                        <i class="bi bi-trash me-2"></i>Eliminar
-                    </button>
+                    <form id="deleteForm" method="POST" action="eliminar_reserva.php" style="display: inline;">
+                        <input type="hidden" name="id" id="deleteId">
+                        <button type="submit" class="btn btn-danger px-4" style="border-radius: 8px;">
+                            <i class="bi bi-trash me-2"></i>Eliminar
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Alertas de Sucesso/Erro -->
-    <?php if ($mensagem): ?>
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
+        <?php if ($mensagem): ?>
             <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <div class="d-flex align-items-center p-3">
                     <div class="toast-icon me-3">
@@ -164,23 +202,9 @@ ob_start();
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
-        </div>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var toastEl = document.getElementById('errorToast');
-                var toast = new bootstrap.Toast(toastEl, {
-                    animation: true,
-                    autohide: true,
-                    delay: 3000
-                });
-                toast.show();
-            });
-        </script>
-    <?php endif; ?>
-    
-    <?php if ($success_message): ?>
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <?php endif; ?>
+        
+        <?php if ($success_message): ?>
             <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <div class="d-flex align-items-center p-3">
                     <div class="toast-icon me-3">
@@ -192,40 +216,28 @@ ob_start();
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
             </div>
-        </div>
+        <?php endif; ?>
+    </div>
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var toastEl = document.getElementById('successToast');
-                var toast = new bootstrap.Toast(toastEl, {
-                    animation: true,
-                    autohide: true,
-                    delay: 3000
-                });
-                toast.show();
-            });
-        </script>
-    <?php endif; ?>
-
-    <!-- Controles e Filtros -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h3>Filtros e Opções</h3>
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header py-3">
+            <h5 class="mb-0">Filtros</h5>
         </div>
         <div class="card-body">
             <form method="GET" action="reservas.php" id="filterForm" class="row g-3">
                 <!-- Pesquisa -->
                 <div class="col-md-4">
-                    <label for="search" class="form-label">Pesquisar</label>
-                    <input type="text" name="search" id="search" class="form-control" 
+                    <label for="searchInput" class="form-label fs-5">Pesquisar</label>
+                    <input type="text" name="search" id="searchInput" class="form-control form-control-lg" 
                            value="<?php echo htmlspecialchars($search); ?>" 
                            placeholder="Cliente, funcionário, serviço...">
                 </div>
-                
+
                 <!-- Filtro de Status -->
                 <div class="col-md-3">
-                    <label for="status" class="form-label">Status</label>
-                    <select name="status" id="status" class="form-select">
+                    <label for="status" class="form-label fs-5">Status</label>
+                    <select name="status" id="status" class="form-select form-select-lg">
                         <option value="">Todos</option>
                         <option value="pendente" <?php echo $status_filter === 'pendente' ? 'selected' : ''; ?>>Pendente</option>
                         <option value="confirmada" <?php echo $status_filter === 'confirmada' ? 'selected' : ''; ?>>Confirmada</option>
@@ -236,244 +248,232 @@ ob_start();
                 
                 <!-- Filtro de Data -->
                 <div class="col-md-2">
-                    <label for="data_inicio" class="form-label">Data Início</label>
-                    <input type="date" name="data_inicio" id="data_inicio" class="form-control"
+                    <label for="data_inicio" class="form-label fs-5">Data Início</label>
+                    <input type="date" name="data_inicio" id="data_inicio" class="form-control form-control-lg"
                            value="<?php echo htmlspecialchars($data_inicio); ?>">
                 </div>
                 
                 <div class="col-md-2">
-                    <label for="data_fim" class="form-label">Data Fim</label>
-                    <input type="date" name="data_fim" id="data_fim" class="form-control"
+                    <label for="data_fim" class="form-label fs-5">Data Fim</label>
+                    <input type="date" name="data_fim" id="data_fim" class="form-control form-control-lg"
                            value="<?php echo htmlspecialchars($data_fim); ?>">
                 </div>
                 
                 <!-- Botões -->
                 <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                    <button type="button" class="btn btn-primary btn-lg w-100" onclick="document.getElementById('filterForm').submit()">
+                        <i class="bi bi-search"></i>
+                    </button>
                 </div>
                 
-                <div class="col-md-12 mt-3">
-                    <a href="reservas.php?clear=1" class="btn btn-secondary me-2">Limpar Filtros</a>
-                    <a href="adicionar_reserva.php" class="btn btn-success">Nova Reserva</a>
-                    <button type="button" class="btn btn-primary ms-2" onclick="window.print()">Imprimir</button>
-                    
-                    <!-- Dropdown de Colunas -->
-                    <div class="dropdown d-inline-block ms-2">
-                        <button class="btn btn-outline-dark dropdown-toggle" type="button" id="dropdownMenuButton" 
-                                data-bs-toggle="dropdown" aria-expanded="false">
-                            Selecionar Colunas
+                <div class="col-12 mt-3">
+                    <div class="d-flex gap-2">
+                        <a href="reservas.php?clear=1" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle me-2"></i>Limpar Filtros
+                        </a>
+                        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                            <a href="adicionar_reserva.php" class="btn btn-success btn-lg">
+                                <i class="bi bi-plus-lg me-2"></i>Nova Reserva
+                            </a>
+                        <?php } ?>
+                        <button class="btn btn-primary btn-lg" onclick="window.print()">
+                            <i class="bi bi-printer me-2"></i>Imprimir
                         </button>
-                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkId" 
-                                           <?php echo in_array('id', $colunas_selecionadas) ? 'checked' : ''; ?>> ID
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkData" 
-                                           <?php echo in_array('data_reserva', $colunas_selecionadas) ? 'checked' : ''; ?>> Data e Hora
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkStatus" 
-                                           <?php echo in_array('status', $colunas_selecionadas) ? 'checked' : ''; ?>> Status
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkCliente" 
-                                           <?php echo in_array('cliente', $colunas_selecionadas) ? 'checked' : ''; ?>> Cliente
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkServico" 
-                                           <?php echo in_array('servico', $colunas_selecionadas) ? 'checked' : ''; ?>> Serviço
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkSubtipo" 
-                                           <?php echo in_array('subtipo', $colunas_selecionadas) ? 'checked' : ''; ?>> Subtipo
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkFuncionario" 
-                                           <?php echo in_array('funcionario', $colunas_selecionadas) ? 'checked' : ''; ?>> Funcionário
-                                </label>
-                            </li>
-                            <li>
-                                <label class="dropdown-item">
-                                    <input type="checkbox" class="form-check-input me-2" id="checkObservacao" 
-                                           <?php echo in_array('observacao', $colunas_selecionadas) ? 'checked' : ''; ?>> Observação
-                                </label>
-                            </li>
-                        </ul>
+                        <!-- Dropdown com filtros -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-columns-gap me-2"></i>Selecionar Colunas
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkData" name="colunas[]" data-column="data_reserva" <?php echo in_array('data_reserva', $colunas_selecionadas) ? 'checked' : ''; ?>> Data
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkStatus" name="colunas[]" data-column="status" <?php echo in_array('status', $colunas_selecionadas) ? 'checked' : ''; ?>> Status
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkCliente" name="colunas[]" data-column="cliente" <?php echo in_array('cliente', $colunas_selecionadas) ? 'checked' : ''; ?>> Cliente
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkServico" name="colunas[]" data-column="servico" <?php echo in_array('servico', $colunas_selecionadas) ? 'checked' : ''; ?>> Serviço
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkSubtipo" name="colunas[]" data-column="subtipo" <?php echo in_array('subtipo', $colunas_selecionadas) ? 'checked' : ''; ?>> Subtipo
+                                    </label>
+                                </li>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkFuncionario" name="colunas[]" data-column="funcionario" <?php echo in_array('funcionario', $colunas_selecionadas) ? 'checked' : ''; ?>> Funcionário
+                                    </label>
+                                </li>
+                                <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                                <li>
+                                    <label class="dropdown-item fs-5">
+                                        <input type="checkbox" class="form-check-input me-2" id="checkObservacao" name="colunas[]" data-column="observacao" <?php echo in_array('observacao', $colunas_selecionadas) ? 'checked' : ''; ?>> Observação
+                                    </label>
+                                </li>
+                                <?php } ?>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Tabela de Reservas -->
-    <div class="table-responsive">
-        <table class="table table-striped table-hover">
-            <thead class="table-dark">
-                <tr>
-                    <?php if (in_array('id', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'id', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                ID <?php echo ($ordenar_por == 'id') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
+    <div class="card shadow-sm">
+        <div class="card-header py-3">
+            <h5 class="mb-0">Reservas</h5>
+        </div>
+        <div class="card-body p-4">
+            <table id="datatablesSimple" class="table table-hover fs-5">
+                <thead class="table-dark">
+                    <?php foreach ($colunas_selecionadas as $coluna): ?>
+                        <th class="py-3">
+                            <?php 
+                                if ($coluna === 'data_reserva') {
+                                    echo 'Data';
+                                } else {
+                                    echo ucfirst(str_replace('_', ' ', $coluna)); 
+                                }
+                            ?>
                         </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('data_reserva', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'data_reserva', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                Data e Hora <?php echo ($ordenar_por == 'data_reserva') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
+                    <?php endforeach; ?> 
+                    <th class="py-3">Ações</th>
+                </thead>
+                <tfoot>
+                    <?php foreach ($colunas_selecionadas as $coluna): ?>
+                        <th class="py-3">
+                            <?php 
+                                if ($coluna === 'data_reserva') {
+                                    echo 'Data';
+                                } else {
+                                    echo ucfirst(str_replace('_', ' ', $coluna)); 
+                                }
+                            ?>
                         </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('status', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'status', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                Status <?php echo ($ordenar_por == 'status') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
-                        </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('cliente', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'cliente', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                Cliente <?php echo ($ordenar_por == 'cliente') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
-                        </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('servico', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'servico', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                Serviço <?php echo ($ordenar_por == 'servico') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
-                        </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('subtipo', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'subtipo', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                Subtipo <?php echo ($ordenar_por == 'subtipo') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
-                        </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('funcionario', $colunas_selecionadas)): ?>
-                        <th>
-                            <a href="?<?php echo http_build_query(array_merge($_GET, ['ordenar_por' => 'funcionario', 'ordem' => ($ordem == 'ASC' ? 'DESC' : 'ASC')])); ?>" class="text-white text-decoration-none">
-                                Funcionário <?php echo ($ordenar_por == 'funcionario') ? ($ordem == 'ASC' ? '▲' : '▼') : ''; ?>
-                            </a>
-                        </th>
-                    <?php endif; ?>
-                    
-                    <?php if (in_array('observacao', $colunas_selecionadas)): ?>
-                        <th>Observação</th>
-                    <?php endif; ?>
-                    
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (count($reservas) > 0): ?>
+                    <?php endforeach; ?>
+                    <th class="py-3">Ações</th>
+                </tfoot>
+                <tbody>
                     <?php foreach ($reservas as $reserva): ?>
                         <tr>
-                            <?php if (in_array('id', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['id']); ?></td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('data_reserva', $colunas_selecionadas)): ?>
-                                <td><?php echo date('d/m/Y H:i', strtotime($reserva['data_reserva'])); ?></td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('status', $colunas_selecionadas)): ?>
-                                <td>
+                            <?php foreach ($colunas_selecionadas as $coluna): ?>
+                                <td class="py-3">
                                     <?php 
-                                    $status_class = '';
-                                    switch ($reserva['status']) {
-                                        case 'pendente':
-                                            $status_class = 'bg-warning text-dark';
+                                    switch($coluna) {
+                                        case 'data_reserva':
+                                            echo date('d/m/Y H:i', strtotime($reserva['data_reserva']));
                                             break;
-                                        case 'confirmada':
-                                            $status_class = 'bg-info text-dark';
+                                        case 'cliente':
+                                            echo htmlspecialchars($reserva['cliente_nome'] ?? '');
                                             break;
-                                        case 'cancelada':
-                                            $status_class = 'bg-danger text-white';
+                                        case 'servico':
+                                            echo htmlspecialchars($reserva['servico_nome'] ?? '');
                                             break;
-                                        case 'concluída':
-                                            $status_class = 'bg-success text-white';
+                                        case 'subtipo':
+                                            echo htmlspecialchars($reserva['subtipo_nome'] ?? '');
                                             break;
+                                        case 'funcionario':
+                                            echo htmlspecialchars($reserva['funcionario_nome'] ?? '');
+                                            break;
+                                        case 'observacao':
+                                            echo htmlspecialchars($reserva['observacao'] ?? '');
+                                            break;
+                                        default:
+                                            echo htmlspecialchars($reserva[$coluna] ?? '');
                                     }
                                     ?>
-                                    <span class="badge <?php echo $status_class; ?>"><?php echo htmlspecialchars(ucfirst($reserva['status'])); ?></span>
                                 </td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('cliente', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['cliente_nome']); ?></td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('servico', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['servico_nome']); ?></td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('subtipo', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['subtipo_nome']); ?></td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('funcionario', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['funcionario_nome']); ?></td>
-                            <?php endif; ?>
-                            
-                            <?php if (in_array('observacao', $colunas_selecionadas)): ?>
-                                <td><?php echo htmlspecialchars($reserva['observacao'] ?: '-'); ?></td>
-                            <?php endif; ?>
-                            
-                            <td>
-                                <!-- Ações -->
-                                <div class="btn-group dropend">
-                                    <a href="editar_reserva.php?id=<?php echo $reserva['id']; ?>" class="btn btn-warning btn-sm">Editar</a>
-                                    <button type="button" class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $reserva['id']; ?>">Eliminar</button>
-                                    
-                                    <!-- Dropdown para alteração de status -->
-                                    <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Status
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item alter-status" data-id="<?php echo $reserva['id']; ?>" data-status="pendente" href="#">Pendente</a></li>
-                                        <li><a class="dropdown-item alter-status" data-id="<?php echo $reserva['id']; ?>" data-status="confirmada" href="#">Confirmada</a></li>
-                                        <li><a class="dropdown-item alter-status" data-id="<?php echo $reserva['id']; ?>" data-status="cancelada" href="#">Cancelada</a></li>
-                                        <li><a class="dropdown-item alter-status" data-id="<?php echo $reserva['id']; ?>" data-status="concluída" href="#">Concluída</a></li>
-                                    </ul>
-                                </div>
+                            <?php endforeach; ?>
+                            <td class="py-3">
+                                <a href="editar_reserva.php?id=<?php echo urlencode($reserva['id']); ?>" class="btn btn-warning btn-sm">
+                                    <i class="bi bi-pencil-square me-1"></i>Editar
+                                </a>
+                                <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                                <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                                    <i class="bi bi-trash me-1"></i>Eliminar
+                                </button>
+                                <?php } ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                <?php else: ?>
-                    <tr>
-                        <td colspan="<?php echo count($colunas_selecionadas) + 1; ?>" class="text-center">Nenhuma reserva encontrada</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
+<script src="../assets/js/style.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
+
+<script>
+    window.addEventListener('DOMContentLoaded', event => {
+        // Initialize DataTable
+        const datatablesSimple = document.getElementById('datatablesSimple');
+        if (datatablesSimple) {
+            new simpleDatatables.DataTable(datatablesSimple, {
+                searchable: false,
+                perPage: 10,
+                perPageSelect: [10, 25, 50, 100],
+                labels: {
+                    placeholder: "Pesquisar...",
+                    perPage: "Itens por página",
+                    noRows: "Nenhuma reserva encontrada",
+                    info: "Mostrando {start} até {end} de {rows} reservas",
+                    noResults: "Nenhum resultado encontrado para {query}"
+                }
+            });
+        }
+
+        // Delete button click handler
+        document.querySelectorAll('.btn-eliminar').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                document.getElementById('deleteId').value = id;
+            });
+        });
+
+        // Initialize toasts
+        function initializeToast(toastElement, type) {
+            if (toastElement && typeof bootstrap !== 'undefined') {
+                const toast = new bootstrap.Toast(toastElement, {
+                    animation: true,
+                    autohide: true,
+                    delay: 5000
+                });
+                toast.show();
+                console.log(type + ' toast initialized and shown');
+            } else {
+                console.error('Bootstrap not available or toast element not found');
+            }
+        }
+
+        // Initialize success and error toasts
+        const successToast = document.getElementById('successToast');
+        const errorToast = document.getElementById('errorToast');
+
+        if (successToast) {
+            initializeToast(successToast, 'Success');
+        }
+        
+        if (errorToast) {
+            initializeToast(errorToast, 'Error');
+        }
+    });
+</script>
 
 <?php
+$conn->close(); // Close the database connection after the query and fetching
 $content = ob_get_clean();
 include '../includes/layout.php';
 ?>

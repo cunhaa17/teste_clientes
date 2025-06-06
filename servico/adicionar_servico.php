@@ -68,7 +68,7 @@ ob_start();
 
     if (isset($_SESSION['success'])) {
         echo '
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
             <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <div class="d-flex align-items-center p-3">
                     <div class="toast-icon me-3">
@@ -79,51 +79,35 @@ ob_start();
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
+                </div>
             </div>
-        </div>
+        </div>';
 
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                var toastEl = document.getElementById("successToast");
-                var toast = new bootstrap.Toast(toastEl, {
-                    animation: true,
-                    autohide: true,
-                    delay: 3000
-                });
-                toast.show();
-            });
-        </script>';
         unset($_SESSION['success']);
     }
-    ?>
 
-    <?php if (!empty($error)): ?>
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    if (!empty($error)) {
+        echo '
+        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
             <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <div class="d-flex align-items-center p-3">
                     <div class="toast-icon me-3">
                         <i class="bi bi-exclamation-circle-fill fs-4"></i>
                     </div>
                     <div class="toast-body fs-5">
-                        <?php echo htmlspecialchars($error); ?>
+                        ' . htmlspecialchars($error) . '
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
+                </div>
             </div>
-        </div>
-
-        <script>
-            document.addEventListener("DOMContentLoaded", function() {
-                var toastEl = document.getElementById("errorToast");
-                var toast = new bootstrap.Toast(toastEl, {
-                    animation: true,
-                    autohide: true,
-                    delay: 3000
-                });
-                toast.show();
-            });
-        </script>
-    <?php endif; ?>
+        </div>';
+    }
+    ?>
 
     <form method="POST">
         <div class="mb-3">
@@ -134,6 +118,31 @@ ob_start();
         <a href="servico.php" class="btn btn-secondary">Cancelar</a>
     </form>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
+  const progressBar = document.getElementById('toastProgressBar');
+  if (toastEl && progressBar) {
+    let width = 100;
+    const duration = 3000; // 3 segundos
+    const intervalTime = 30;
+
+    // Mostra o toast
+    const toast = new bootstrap.Toast(toastEl, { autohide: false });
+    toast.show();
+
+    // Anima a barra
+    const interval = setInterval(() => {
+      width -= (intervalTime / duration) * 100;
+      progressBar.style.width = width + "%";
+      if (width <= 0) {
+        clearInterval(interval);
+        toast.hide();
+      }
+    }, intervalTime);
+  }
+});
+</script>
 <?php
 $content = ob_get_clean(); // Capture the output and store it in $content
 

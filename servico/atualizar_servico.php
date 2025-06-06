@@ -1,7 +1,6 @@
 <?php
 // Inclui o ficheiro que contém a conexão com a base de dados
 include '../includes/db_conexao.php';
-include '../includes/layout.php';
 
 // Inicia uma sessão para manter informações durante o uso do sistema
 session_start();
@@ -18,105 +17,119 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-// Verifica se o ID foi fornecido no POST e se é um número inteiro válido
-if (!isset($_POST['id']) || !filter_var($_POST['id'], FILTER_VALIDATE_INT)) {
-    // Encerra o script com uma mensagem caso o ID seja inválido
-    die("ID inválido.");
+$title = "Atualizar Serviço";
+
+// Verifica se o ID foi fornecido via GET
+if (!isset($_GET['id']) || !filter_var($_GET['id'], FILTER_VALIDATE_INT)) {
+    $_SESSION['mensagem'] = "ID inválido.";
+    header("Location: servico.php");
+    exit();
 }
 
-// Obtém o ID do cliente enviado pelo formulário
-$id = $_POST['id'];
+// Obtém o ID do serviço
+$id = $conn->real_escape_string($_GET['id']);
 
-// Cria uma query SQL segura para selecionar os dados do cliente com o ID fornecido
-$query = "SELECT * FROM servico_subtipo WHERE id = ?";
-$stmt = $conn->prepare($query); // Prepara a query para execução
-$stmt->bind_param("i", $id); // Associa o parâmetro do ID como inteiro à query
-$stmt->execute(); // Executa a query preparada
-$result = $stmt->get_result(); // Obtém o resultado da query executada
-$cliente = $result->fetch_assoc(); // Converte o resultado em um array associativo
+// Cria uma query SQL para selecionar os dados do serviço com o ID fornecido
+$query = "SELECT s.*, ss.nome as servico_nome 
+          FROM servico_subtipo s 
+          JOIN servico ss ON s.servico_id = ss.id 
+          WHERE s.id = '$id'";
+$result = $conn->query($query);
+$servico = $result->fetch_assoc();
 
-// Verifica se o cliente foi encontrado na base de dados
-if (!$cliente) {
-    // Encerra o script com uma mensagem caso o cliente não seja encontrado
-    die("Servico não encontrado.");
+// Verifica se o serviço foi encontrado na base de dados
+if (!$servico) {
+    $_SESSION['mensagem'] = "Serviço não encontrado.";
+    header("Location: servico.php");
+    exit();
 }
 
 // Verifica se já existe um CSRF token na sessão, e gera um novo caso não exista
 if (empty($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); // Gera um token seguro aleatório
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    $id = $conn->real_escape_string($_POST['id']);
-
-    // Verificar se o serviço existe
-    $sql_check = "SELECT id FROM servico WHERE id = '$id'";
-    $result_check = $conn->query($sql_check);
-
-    if ($result_check->num_rows === 0) {
-        echo json_encode(['status' => 'error', 'message' => 'Serviço não encontrado']);
-        exit();
-    }
-
-    // Atualizar o serviço
-    $sql = "UPDATE servico SET nome = '$nome' WHERE id = '$id'";
-    
-    if ($conn->query($sql)) {
-        echo json_encode(['status' => 'success', 'message' => 'Serviço atualizado com sucesso']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Erro ao atualizar serviço: ' . $conn->error]);
-    }
-} else {
-    echo json_encode(['status' => 'error', 'message' => 'Requisição inválida']);
-}
+ob_start();
 ?>
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Atualizar Serviço</title> <!-- Título da página -->
-    <!-- Inclui o CSS do Bootstrap para estilos prontos -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <!-- Container principal para centralizar o conteúdo na página -->
-    <div class="container mt-4">
-        <!-- Cabeçalho principal da página -->
-        <h1 class="text-center">Atualizar Serviço</h1>
-        
-        <!-- Formulário para atualizar os dados do cliente -->
-        <form action="guardar_servico.php" method="POST" class="mt-4">
-            <!-- Campo oculto para enviar o ID do cliente -->
-            <input type="hidden" name="id" value="<?php echo htmlspecialchars($servico['id']); ?>">
-            <!-- Campo oculto para enviar o token CSRF -->
-            <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
-
-            <!-- Campo para atualizar o nome do cliente -->
-            <div class="mb-3">
-                <label>Nome:</label> <!-- Rótulo para o campo de nome -->
-                <input type="text" name="nome" value="<?php echo htmlspecialchars($servico['Nome']); ?>" class="form-control" required> <!-- Entrada de texto com valor inicial preenchido -->
-            </div>
-
-            <!-- Campo para atualizar o email do cliente -->
-            <div class="mb-3">
-                <label>Descrição</label> <!-- Rótulo para o campo de email -->
-                <input type="text" name="descricao" value="<?php echo htmlspecialchars($servico['Descricao']); ?>" class="form-control" required> <!-- Entrada de email com validação -->
-            </div>
-
-            <!-- Campo para atualizar o telefone do cliente -->
-            <div class="mb-3">
-                <label>Preço</label> <!-- Rótulo para o campo de telefone -->
-                <input type="float" name="preco" value="<?php echo htmlspecialchars($servico['Preco']); ?>" class="form-control" required> <!-- Entrada de telefone com validação de padrão -->
-            </div>
-
-            <div class="mb-3">
-                <label>Duração</label> <!-- Rótulo para o campo de telefone -->
-                <input type="int" name="duracao" value="<?php echo htmlspecialchars($servico['Duracao']); ?>" class="form-control" required> <!-- Entrada de telefone com validação de padrão -->
-            </div>
-
-            <!-- Botão para enviar o formulário e atualizar os dados -->
-            <button type="submit" class="btn btn-primary">Atualizar</button>
-        </form>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Atualizar Serviço</h1>
+        <a href="servico.php" class="btn btn-secondary">Voltar</a>
     </div>
-</body>
-</html>
+
+    <?php if (isset($_SESSION['mensagem'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?php 
+            echo $_SESSION['mensagem'];
+            unset($_SESSION['mensagem']);
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+
+    <div class="card">
+        <div class="card-body">
+            <form action="atualizar_servico_process.php" method="POST" id="updateForm">
+                <input type="hidden" name="id" value="<?php echo htmlspecialchars($servico['id']); ?>">
+                <input type="hidden" name="servico_id" value="<?php echo htmlspecialchars($servico['servico_id']); ?>">
+                <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token']; ?>">
+
+                <div class="mb-3">
+                    <label class="form-label">Serviço Principal</label>
+                    <input type="text" class="form-control" value="<?php echo htmlspecialchars($servico['servico_nome']); ?>" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome do Subtipo *</label>
+                    <input type="text" class="form-control" id="nome" name="nome" 
+                           value="<?php echo htmlspecialchars($servico['nome']); ?>" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição *</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3" required><?php echo htmlspecialchars($servico['descricao']); ?></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="preco" class="form-label">Preço (€) *</label>
+                    <input type="text" class="form-control" id="preco" name="preco" 
+                           value="<?php echo number_format($servico['preco'], 2, ',', ''); ?>" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="duracao" class="form-label">Duração (minutos) *</label>
+                    <input type="number" min="1" class="form-control" id="duracao" name="duracao" 
+                           value="<?php echo intval($servico['duracao']); ?>" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Atualizar Serviço</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('updateForm').addEventListener('submit', function(e) {
+    // Garantir que o preço está no formato correto
+    var preco = document.getElementById('preco').value;
+    if (preco) {
+        // Substituir vírgula por ponto
+        preco = preco.replace(',', '.');
+        // Garantir que tem 2 casas decimais
+        preco = parseFloat(preco).toFixed(2);
+        document.getElementById('preco').value = preco;
+    }
+    
+    // Garantir que a duração é um número inteiro
+    var duracao = document.getElementById('duracao').value;
+    if (duracao) {
+        document.getElementById('duracao').value = parseInt(duracao);
+    }
+});
+</script>
+
+<?php
+$content = ob_get_clean();
+include '../includes/layout.php';
+?>

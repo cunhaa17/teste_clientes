@@ -20,166 +20,202 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-$title = "Editar Horário de Funcionário";
 include_once '../includes/db_conexao.php';
 
-// Verificar se o ID foi fornecido
-if (!isset($_GET['id']) || empty($_GET['id'])) {
-    $_SESSION['mensagem'] = "ID do horário não fornecido";
-    header("Location: agenda_funcionarios.php");
+// Verifica se o ID foi fornecido
+if (!isset($_GET['id'])) {
+    $_SESSION['mensagem'] = "ID do horário não fornecido.";
+    header("Location: horarios.php");
     exit();
 }
 
 $id = $conn->real_escape_string($_GET['id']);
 
-// Buscar dados do horário
-$sql = "SELECT id, funcionario_id, data_inicio, data_fim FROM agenda_funcionario WHERE id = '$id'";
-$result = $conn->query($sql);
+// Processar o formulário de edição
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $hora_inicio_manha = $conn->real_escape_string($_POST['hora_inicio_manha']);
+    $hora_fim_manha = $conn->real_escape_string($_POST['hora_fim_manha']);
+    $hora_inicio_tarde = $conn->real_escape_string($_POST['hora_inicio_tarde']);
+    $hora_fim_tarde = $conn->real_escape_string($_POST['hora_fim_tarde']);
 
-if ($result->num_rows === 0) {
-    $_SESSION['mensagem'] = "Horário não encontrado";
-    header("Location: agenda_funcionarios.php");
+    // Primeiro, encontrar os IDs dos registros de manhã e tarde
+    $query = "WITH horarios_numerados AS (
+        SELECT 
+            agenda_funcionario.id AS id_a,
+            funcionario.id AS id_f,
+            funcionario.nome, 
+            funcionario_id,
+            DATE(data_inicio) AS dia,
+            data_inicio,
+            data_fim,
+            ROW_NUMBER() OVER (
+                PARTITION BY funcionario_id, DATE(data_inicio)
+                ORDER BY TIME(data_inicio)
+            ) AS turno_num
+        FROM agenda_funcionario
+            INNER JOIN funcionario ON funcionario.id = agenda_funcionario.funcionario_id
+        WHERE funcionario.id = '$id'
+    )
+    SELECT id_a, turno_num, DATE(data_inicio) as data FROM horarios_numerados WHERE turno_num IN (1, 2)";
+    
+    $result = $conn->query($query);
+    if ($result && $result->num_rows > 0) {
+        while($row = $result->fetch_assoc()) {
+            $data = $row['data'];
+            $id_a = $row['id_a'];
+            
+            if ($row['turno_num'] == 1) { // Turno da manhã
+                $data_inicio = $data . ' ' . $hora_inicio_manha;
+                $data_fim = $data . ' ' . $hora_fim_manha;
+            } else { // Turno da tarde
+                $data_inicio = $data . ' ' . $hora_inicio_tarde;
+                $data_fim = $data . ' ' . $hora_fim_tarde;
+            }
+            
+            $update_query = "UPDATE agenda_funcionario SET 
+                           data_inicio = '$data_inicio',
+                           data_fim = '$data_fim'
+                           WHERE id = '$id_a'";
+            
+            if (!$conn->query($update_query)) {
+                $_SESSION['mensagem'] = "Erro ao atualizar o horário: " . $conn->error;
+                header("Location: horarios.php");
+                exit();
+            }
+        }
+        
+        $_SESSION['success'] = "Horário atualizado com sucesso!";
+        header("Location: horarios.php");
+        exit();
+    } else {
+        $_SESSION['mensagem'] = "Erro ao encontrar os registros para atualização.";
+        header("Location: horarios.php");
+        exit();
+    }
+}
+
+// Buscar dados do horário usando a mesma lógica da stored procedure
+$query = "WITH horarios_numerados AS (
+    SELECT 
+        agenda_funcionario.id AS id_a,
+        funcionario.id AS id_f,
+        funcionario.nome, 
+        funcionario_id,
+        DATE(data_inicio) AS dia,
+        data_inicio,
+        data_fim,
+        ROW_NUMBER() OVER (
+            PARTITION BY funcionario_id, DATE(data_inicio)
+            ORDER BY TIME(data_inicio)
+        ) AS turno_num
+    FROM agenda_funcionario
+        INNER JOIN funcionario ON funcionario.id = agenda_funcionario.funcionario_id
+    WHERE funcionario.id = '$id'
+)
+SELECT
+    manha.id_a AS manha_id,
+    tarde.id_a AS tarde_id,
+    manha.id_f,
+    manha.nome,
+    manha.dia,
+    manha.data_inicio AS manha_inicio,
+    manha.data_fim AS manha_fim,
+    tarde.data_inicio AS tarde_inicio,
+    tarde.data_fim AS tarde_fim
+FROM
+    horarios_numerados AS manha
+JOIN
+    horarios_numerados AS tarde
+    ON manha.funcionario_id = tarde.funcionario_id
+    AND manha.dia = tarde.dia
+WHERE
+    manha.turno_num = 1
+    AND tarde.turno_num = 2";
+
+$result = $conn->query($query);
+
+if (!$result || $result->num_rows === 0) {
+    $_SESSION['mensagem'] = "Horário não encontrado.";
+    header("Location: horarios.php");
     exit();
 }
 
-$agenda = $result->fetch_assoc();
+$horario = $result->fetch_assoc();
 
-// Formatar datas e horas para o formulário
-$data_inicio = date('Y-m-d', strtotime($agenda['data_inicio']));
-$hora_inicio = date('H:i', strtotime($agenda['data_inicio']));
-$data_fim = date('Y-m-d', strtotime($agenda['data_fim']));
-$hora_fim = date('H:i', strtotime($agenda['data_fim']));
-
-// Buscar funcionários para o select
-$sql_funcionarios = "SELECT id, nome FROM funcionario ORDER BY nome";
-$result_funcionarios = $conn->query($sql_funcionarios);
-$funcionarios = $result_funcionarios->fetch_all(MYSQLI_ASSOC);
-
-// Processar o formulário quando enviado
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
-    $data_inicio = $conn->real_escape_string($_POST['data_inicio'] . ' ' . $_POST['hora_inicio']);
-    $data_fim = $conn->real_escape_string($_POST['data_fim'] . ' ' . $_POST['hora_fim']);
-    
-    // Validações
-    $errors = [];
-    
-    if (empty($funcionario_id)) {
-        $errors[] = "O funcionário é obrigatório";
-    }
-    
-    if (empty($_POST['data_inicio']) || empty($_POST['hora_inicio'])) {
-        $errors[] = "A data e hora de início são obrigatórias";
-    }
-    
-    if (empty($_POST['data_fim']) || empty($_POST['hora_fim'])) {
-        $errors[] = "A data e hora de fim são obrigatórias";
-    }
-    
-    // Verificar se a data de fim é posterior à data de início
-    if (strtotime($data_fim) <= strtotime($data_inicio)) {
-        $errors[] = "A data/hora de fim deve ser posterior à data/hora de início";
-    }
-    
-    // Verificar se há sobreposição com outros horários (excluindo o atual)
-    if (empty($errors)) {
-        $sql_check = "SELECT id FROM agenda_funcionario 
-                      WHERE funcionario_id = '$funcionario_id' 
-                      AND id != '$id'
-                      AND ((data_inicio <= '$data_fim' AND data_fim >= '$data_inicio') 
-                           OR (data_inicio <= '$data_inicio' AND data_fim >= '$data_inicio')
-                           OR (data_inicio >= '$data_inicio' AND data_fim <= '$data_fim'))";
-        $result_check = $conn->query($sql_check);
-        
-        if ($result_check->num_rows > 0) {
-            $errors[] = "Há sobreposição com outro horário já cadastrado para este funcionário";
-        }
-    }
-    
-    // Se não houver erros, atualiza no banco
-    if (empty($errors)) {
-        $sql = "UPDATE agenda_funcionario SET funcionario_id = '$funcionario_id', data_inicio = '$data_inicio', data_fim = '$data_fim' WHERE id = '$id'";
-        
-        if ($conn->query($sql)) {
-            $_SESSION['success'] = "Horário atualizado com sucesso!";
-            header("Location: agenda_funcionarios.php");
-            exit();
-        } else {
-            $errors[] = "Erro ao atualizar horário: " . $conn->error;
-        }
-    }
-}
+// Extrair apenas as horas dos horários
+$hora_inicio_manha = date('H:i', strtotime($horario['manha_inicio']));
+$hora_fim_manha = date('H:i', strtotime($horario['manha_fim']));
+$hora_inicio_tarde = date('H:i', strtotime($horario['tarde_inicio']));
+$hora_fim_tarde = date('H:i', strtotime($horario['tarde_fim']));
 
 ob_start();
 ?>
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Editar Horário de Trabalho</h1>
-        <a href="agenda_funcionarios.php" class="btn btn-secondary">Voltar</a>
+        <h1>Editar Horário</h1>
+        <a href="horarios.php" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </a>
     </div>
-    
-    <?php if (isset($errors) && !empty($errors)): ?>
-        <div class="alert alert-danger">
-            <ul class="mb-0">
-                <?php foreach ($errors as $error): ?>
-                    <li><?php echo htmlspecialchars($error); ?></li>
-                <?php endforeach; ?>
-            </ul>
+
+    <?php if (isset($_SESSION['mensagem'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?php 
+            echo $_SESSION['mensagem'];
+            unset($_SESSION['mensagem']);
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php endif; ?>
-    
+
     <div class="card">
+        <div class="card-header">
+            <h5>Editar Horário de <?php echo htmlspecialchars($horario['nome']); ?> - <?php echo htmlspecialchars($horario['dia']); ?></h5>
+        </div>
         <div class="card-body">
             <form method="POST" action="">
                 <div class="row mb-3">
-                    <div class="col-md-12">
-                        <label for="funcionario_id" class="form-label">Funcionário *</label>
-                        <select name="funcionario_id" id="funcionario_id" class="form-select" required>
-                            <option value="">Selecione um funcionário</option>
-                            <?php foreach ($funcionarios as $funcionario): ?>
-                                <option value="<?php echo $funcionario['id']; ?>" <?php echo $agenda['funcionario_id'] == $funcionario['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($funcionario['nome']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="data_inicio" class="form-label">Data de Início *</label>
-                        <input type="date" name="data_inicio" id="data_inicio" class="form-control" required
-                               value="<?php echo isset($_POST['data_inicio']) ? htmlspecialchars($_POST['data_inicio']) : $data_inicio; ?>">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Turno da Manhã</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="hora_inicio_manha" class="form-label">Horário de Início</label>
+                                    <input type="time" class="form-control" id="hora_inicio_manha" name="hora_inicio_manha" value="<?php echo htmlspecialchars($hora_inicio_manha); ?>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="hora_fim_manha" class="form-label">Horário de Fim</label>
+                                    <input type="time" class="form-control" id="hora_fim_manha" name="hora_fim_manha" value="<?php echo htmlspecialchars($hora_fim_manha); ?>" required>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label for="hora_inicio" class="form-label">Hora de Início *</label>
-                        <input type="time" name="hora_inicio" id="hora_inicio" class="form-control" required
-                               value="<?php echo isset($_POST['hora_inicio']) ? htmlspecialchars($_POST['hora_inicio']) : $hora_inicio; ?>">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Turno da Tarde</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="hora_inicio_tarde" class="form-label">Horário de Início</label>
+                                    <input type="time" class="form-control" id="hora_inicio_tarde" name="hora_inicio_tarde" value="<?php echo htmlspecialchars($hora_inicio_tarde); ?>" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="hora_fim_tarde" class="form-label">Horário de Fim</label>
+                                    <input type="time" class="form-control" id="hora_fim_tarde" name="hora_fim_tarde" value="<?php echo htmlspecialchars($hora_fim_tarde); ?>" required>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label for="data_fim" class="form-label">Data de Fim *</label>
-                        <input type="date" name="data_fim" id="data_fim" class="form-control" required
-                               value="<?php echo isset($_POST['data_fim']) ? htmlspecialchars($_POST['data_fim']) : $data_fim; ?>">
-                    </div>
-                    <div class="col-md-6">
-                        <label for="hora_fim" class="form-label">Hora de Fim *</label>
-                        <input type="time" name="hora_fim" id="hora_fim" class="form-control" required
-                               value="<?php echo isset($_POST['hora_fim']) ? htmlspecialchars($_POST['hora_fim']) : $hora_fim; ?>">
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <div class="form-text text-muted">
-                        <strong>Nota:</strong> Este horário define quando o funcionário estará disponível para atender clientes.
-                    </div>
-                </div>
-                
-                <div class="d-grid">
-                    <button type="submit" class="btn btn-primary">Atualizar Horário</button>
+
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Salvar Alterações
+                    </button>
                 </div>
             </form>
         </div>

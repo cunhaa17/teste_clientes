@@ -15,28 +15,45 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-header('Content-Type: application/json');
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     $id = intval($_POST['id']);
-
-    error_log("Recebido pedido para eliminar ID: " . $id);
+    error_log("Recebido pedido para eliminar cliente ID: " . $id);
 
     if ($id > 0) {
         $id = $conn->real_escape_string($id);
-        $query = "DELETE FROM Cliente WHERE id = '$id'";
         
-        if ($conn->query($query)) {
-            echo json_encode(["status" => "success", "message" => "Cliente eliminado com sucesso!"]);
+        // Verificar se o cliente existe
+        $check_query = "SELECT id FROM cliente WHERE id = '$id'";
+        $check_result = $conn->query($check_query);
+        
+        if ($check_result->num_rows === 0) {
+            error_log("Cliente não encontrado: " . $id);
+            $_SESSION['mensagem'] = "Cliente não encontrado";
         } else {
-            error_log("Erro ao executar DELETE: " . $conn->error);
-            echo json_encode(["status" => "error", "message" => "Erro ao eliminar cliente."]);
+            // Tentar eliminar o cliente
+            $query = "DELETE FROM cliente WHERE id = '$id'";
+            error_log("Executando query: " . $query);
+            
+            if ($conn->query($query)) {
+                error_log("Cliente eliminado com sucesso: " . $id);
+                $_SESSION['success'] = "Cliente eliminado com sucesso!";
+            } else {
+                error_log("Erro ao executar DELETE: " . $conn->error);
+                $_SESSION['mensagem'] = "Erro ao eliminar cliente: " . $conn->error;
+            }
         }
     } else {
-        echo json_encode(["status" => "error", "message" => "ID inválido."]);
+        error_log("ID inválido recebido: " . $id);
+        $_SESSION['mensagem'] = "ID inválido";
     }
 } else {
-    echo json_encode(["status" => "error", "message" => "Requisição inválida."]);
+    error_log("Requisição inválida. Método: " . $_SERVER['REQUEST_METHOD'] . ", POST data: " . print_r($_POST, true));
+    $_SESSION['mensagem'] = "Requisição inválida";
 }
+
+$conn->close();
+header("Location: clientes.php");
+exit();
 ?>

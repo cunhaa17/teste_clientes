@@ -60,7 +60,9 @@ ob_start();
 <head>
     <!-- CSS do Datepicker -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datepicker/1.9.0/css/bootstrap-datepicker.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
     <!-- jQuery (necessário para o Datepicker) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
@@ -69,6 +71,125 @@ ob_start();
 
     <!-- Bootstrap JS -->
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .card-title {
+            font-weight: 500;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+        
+        .card-text {
+            font-weight: 600;
+            font-size: 2rem !important;
+        }
+        
+        .bg-primary {
+            background: linear-gradient(45deg, #4e73df, #224abe) !important;
+        }
+        
+        .bg-success {
+            background: linear-gradient(45deg, #1cc88a, #13855c) !important;
+        }
+        
+        .table {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        
+        .table thead th {
+            border-top: none;
+            background: #f8f9fa;
+            font-weight: 600;
+            padding: 1rem;
+        }
+        
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+        }
+        
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(0,0,0,.02);
+        }
+        
+        .table tbody tr:hover {
+            background-color: rgba(0,0,0,.04);
+            transition: background-color 0.2s ease;
+        }
+        
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .status-pendente { background-color: #ffeeba; color: #856404; }
+        .status-confirmada { background-color: #d4edda; color: #155724; }
+        .status-cancelada { background-color: #f8d7da; color: #721c24; }
+        
+        .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+        
+        .modal-content {
+            border-radius: 15px;
+            border: none;
+        }
+        
+        .modal-header {
+            border-bottom: 1px solid rgba(0,0,0,.1);
+            background: #f8f9fa;
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .btn {
+            border-radius: 50px;
+            padding: 0.5rem 1.5rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(45deg, #4e73df, #224abe);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78,115,223,0.3);
+        }
+    </style>
 </head>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -77,8 +198,11 @@ ob_start();
     <div class="row">
         <!-- Card Clientes -->
         <div class="col-md-3">
-            <div class="card bg-primary text-white shadow">
+            <div class="card bg-primary text-white shadow animate__animated animate__fadeIn">
                 <div class="card-body">
+                    <div class="icon-circle">
+                        <i class="fas fa-users fa-2x"></i>
+                    </div>
                     <h5 class="card-title">Total de Clientes</h5>
                     <p class="card-text fs-2"><?php echo $total_clientes; ?></p>
                 </div>
@@ -88,8 +212,11 @@ ob_start();
         <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
         <!-- Card Serviços Ativos -->
         <div class="col-md-3">
-            <div class="card bg-success text-white shadow">
+            <div class="card bg-success text-white shadow animate__animated animate__fadeIn" style="animation-delay: 0.2s">
                 <div class="card-body">
+                    <div class="icon-circle">
+                        <i class="fas fa-concierge-bell fa-2x"></i>
+                    </div>
                     <h5 class="card-title">Serviços Ativos</h5>
                     <p class="card-text fs-2"><?php echo $total_servicos; ?></p>
                 </div>
@@ -101,26 +228,36 @@ ob_start();
     <!-- Gráfico e Reservas na mesma linha -->
     <div class="row mt-4">
         <div class="col-md-12">
-            <h4>Próximas Reservas</h4>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0">Próximas Reservas</h4>
+                <button class="btn btn-primary" id="refreshReservas">
+                    <i class="fas fa-sync-alt mr-2"></i>Atualizar
+                </button>
+            </div>
             <div class="table-responsive">
                 <table class="table table-striped">
                     <thead>
                         <tr>
-                            <th>Cliente</th>
-                            <th>Serviço</th>
+                            <th><i class="fas fa-user mr-2"></i>Cliente</th>
+                            <th><i class="fas fa-concierge-bell mr-2"></i>Serviço</th>
                             <th id="dateHeader" style="cursor: pointer;">
-                                Data <i class="fas fa-search" title="Filtrar por Data"></i>
+                                <i class="fas fa-calendar-alt mr-2"></i>Data
+                                <i class="fas fa-search ml-2" title="Filtrar por Data"></i>
                             </th>
-                            <th>Status</th>
+                            <th><i class="fas fa-info-circle mr-2"></i>Status</th>
                         </tr>
                     </thead>
                     <tbody id="reservasTableBody">
                         <?php while ($reserva = mysqli_fetch_assoc($result_reservas)) { ?>
-                            <tr>
+                            <tr class="animate__animated animate__fadeIn">
                                 <td><?php echo $reserva['cliente']; ?></td>
                                 <td><?php echo $reserva['servico']; ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($reserva['data'])); ?></td>
-                                <td><?php echo ucfirst($reserva['status']); ?></td>
+                                <td>
+                                    <span class="status-badge status-<?php echo strtolower($reserva['status']); ?>">
+                                        <?php echo ucfirst($reserva['status']); ?>
+                                    </span>
+                                </td>
                             </tr>
                         <?php } ?>
                     </tbody>
@@ -135,7 +272,9 @@ ob_start();
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="datePickerModalLabel">Selecionar Data</h5>
+                <h5 class="modal-title" id="datePickerModalLabel">
+                    <i class="fas fa-calendar-alt mr-2"></i>Selecionar Data
+                </h5>
                 <button type="button" class="close" data-bs-dismiss="modal" aria-label="Fechar">&times;</button>
             </div>
             <div class="modal-body">
@@ -144,7 +283,9 @@ ob_start();
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" id="applyDate" class="btn btn-primary">Aplicar</button>
+                <button type="button" id="applyDate" class="btn btn-primary">
+                    <i class="fas fa-check mr-2"></i>Aplicar
+                </button>
             </div>
         </div>
     </div>
@@ -153,26 +294,42 @@ ob_start();
 <script>
     $(document).ready(function() {
         $('#datepicker').datepicker({
-            format: 'dd/mm/yyyy', // Set the desired date format
-            autoclose: true // Close the datepicker after selection
+            format: 'dd/mm/yyyy',
+            autoclose: true,
+            todayHighlight: true
         });
 
-        // When clicking the date header, show the modal
         $('#dateHeader').on('click', function() {
             $('#datePickerModal').modal('show');
         });
 
-        // Apply date filter
         $('#applyDate').on('click', function() {
             const selectedDate = $('#datepicker').val();
             const rows = $('#reservasTableBody tr');
 
             rows.each(function() {
-                const dateCell = $(this).find('td:nth-child(3)').text().trim(); // Get the date cell
+                const dateCell = $(this).find('td:nth-child(3)').text().trim();
                 $(this).toggle(dateCell === selectedDate);
             });
 
             $('#datePickerModal').modal('hide');
+        });
+
+        // Adiciona efeito de hover nos cards
+        $('.card').hover(
+            function() { $(this).addClass('animate__animated animate__pulse'); },
+            function() { $(this).removeClass('animate__animated animate__pulse'); }
+        );
+
+        // Adiciona efeito de loading ao atualizar
+        $('#refreshReservas').on('click', function() {
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin mr-2"></i>Atualizando...');
+            
+            setTimeout(function() {
+                location.reload();
+            }, 1000);
         });
     });
 </script>

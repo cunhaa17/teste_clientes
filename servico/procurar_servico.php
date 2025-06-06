@@ -13,30 +13,25 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-if (isset($_GET['q'])) {
-    $query = $conn->real_escape_string($_GET['q']);
+include_once '../includes/db_conexao.php';
 
-    // Conectar ao banco de dados
-    $conn = new mysqli("localhost", "usuario", "senha", "banco");
-
-    if ($conn->connect_error) {
-        die("Erro na conexão: " . $conn->connect_error);
-    }
+if (isset($_GET['q']) && !empty(trim($_GET['q']))) {
+    $query = $conn->real_escape_string(trim($_GET['q']));
 
     // Buscar os resultados
     $sql = "SELECT nome FROM servico WHERE nome LIKE '%$query%' LIMIT 10";
     $result = $conn->query($sql);
 
-    if ($result->num_rows > 0) {
+    if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
             echo "<p>" . htmlspecialchars($row['nome']) . "</p>";
         }
     } else {
         echo "<p>Nenhum resultado encontrado</p>";
     }
-
-    $conn->close();
 } else {
-    echo "<p>Erro na requisição</p>";
+    echo "<p>Digite algo para pesquisar</p>";
 }
+
+$conn->close();
 ?>

@@ -15,25 +15,47 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
     exit();
 }
 
-
-header('Content-Type: application/json');
 include_once '../includes/db_conexao.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    $id = $conn->real_escape_string($_POST['id']);
+    $id = intval($_POST['id']);
+    error_log("Recebido pedido para eliminar funcionário ID: " . $id);
 
     if ($id > 0) {
-        $query = "DELETE FROM funcionario WHERE id = '$id'";
+        $id = $conn->real_escape_string($id);
         
-        if ($conn->query($query)) {
-            echo json_encode(["status" => "success", "message" => "Funcionário eliminado com sucesso!"]);
+        // Verificar se o funcionário existe
+        $check_query = "SELECT id FROM funcionario WHERE id = '$id'";
+        $check_result = $conn->query($check_query);
+        
+        if ($check_result->num_rows === 0) {
+            error_log("Funcionário não encontrado: " . $id);
+            $_SESSION['mensagem'] = "Funcionário não encontrado";
         } else {
-            echo json_encode(["status" => "error", "message" => "Erro ao eliminar funcionário."]);
+            // Tentar eliminar o funcionário
+            $query = "DELETE FROM funcionario WHERE id = '$id'";
+            error_log("Executando query: " . $query);
+            
+            if ($conn->query($query)) {
+                error_log("Funcionário eliminado com sucesso: " . $id);
+                $_SESSION['success'] = "Funcionário eliminado com sucesso!";
+            } else {
+                error_log("Erro ao executar DELETE: " . $conn->error);
+                $_SESSION['mensagem'] = "Erro ao eliminar funcionário: " . $conn->error;
+            }
         }
     } else {
-        echo json_encode(["status" => "error", "message" => "ID inválido."]);
+        error_log("ID inválido recebido: " . $id);
+        $_SESSION['mensagem'] = "ID inválido";
     }
 } else {
-    echo json_encode(["status" => "error", "message" => "Requisição inválida."]);
+    error_log("Requisição inválida. Método: " . $_SERVER['REQUEST_METHOD'] . ", POST data: " . print_r($_POST, true));
+    $_SESSION['mensagem'] = "Requisição inválida";
 }
+
+$conn->close();
+
+// Redireciona de volta para a página de listagem de funcionários
+header("Location: funcionario.php");
+exit();
 ?>
