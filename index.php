@@ -33,6 +33,13 @@ $query_ocupacao = "SELECT
 IFNULL((COUNT(*) / NULLIF((SELECT COUNT(*) FROM reserva), 0)) * 100, 0) AS taxa 
 FROM reserva";
 
+// Query para estimativa mensal
+$query_estimativa_mensal = "SELECT SUM(servico_subtipo.preco) as total_mensal 
+                           FROM reserva 
+                           JOIN servico_subtipo ON reserva.servico_subtipo_id = servico_subtipo.id 
+                           WHERE MONTH(data_reserva) = MONTH(CURRENT_DATE()) 
+                           AND YEAR(data_reserva) = YEAR(CURRENT_DATE())";
+
 // Consultando status das reservas
 $query_status_reservas = "SELECT 
     MONTH(reserva.data_reserva) AS mes, 
@@ -47,11 +54,13 @@ $result_reservas = mysqli_query($conn, $query_reservas);
 $result_funcionarios = mysqli_query($conn, $query_funcionarios_online);
 $result_faturamento = mysqli_query($conn, $query_faturamento);
 $result_ocupacao = mysqli_query($conn, $query_ocupacao);
+$result_estimativa_mensal = mysqli_query($conn, $query_estimativa_mensal);
 $result_status_reservas = mysqli_query($conn, $query_status_reservas); // Executa a consulta de status
 
 $total_clientes = mysqli_fetch_assoc($result_clientes)['total'];
 $total_servicos = mysqli_fetch_assoc($result_servicos)['total'];
 $taxa_ocupacao = mysqli_fetch_assoc($result_ocupacao)['taxa'];
+$estimativa_mensal = mysqli_fetch_assoc($result_estimativa_mensal)['total_mensal'] ?? 0;
 
 
 ob_start();
@@ -219,6 +228,19 @@ ob_start();
                     </div>
                     <h5 class="card-title">Serviços Ativos</h5>
                     <p class="card-text fs-2"><?php echo $total_servicos; ?></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Estimativa Mensal -->
+        <div class="col-md-3">
+            <div class="card bg-info text-white shadow animate__animated animate__fadeIn" style="animation-delay: 0.4s">
+                <div class="card-body">
+                    <div class="icon-circle">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                    <h5 class="card-title">Estimativa Mensal</h5>
+                    <p class="card-text fs-2"><?php echo number_format($estimativa_mensal, 2, ',', '.'); ?> MZN</p>
                 </div>
             </div>
         </div>

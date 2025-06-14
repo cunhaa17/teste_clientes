@@ -8,7 +8,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-$title = "Serviços";
+$title = "Serviços - Gestão";
 include_once '../includes/db_conexao.php';
 
 // Initial setup and redirects

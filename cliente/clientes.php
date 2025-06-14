@@ -8,7 +8,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-$title = "Clientes";
+$title = "Clientes - Gestão";
 include_once '../includes/db_conexao.php';
 
 if (isset($_GET['clear'])) {
@@ -32,7 +32,9 @@ if (isset($_SESSION['mensagem'])) {
 }
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-$colunas_selecionadas = isset($_GET['colunas']) ? explode(',', $_GET['colunas']) : ['nome', 'email', 'telefone'];
+$colunas_selecionadas = isset($_GET['colunas']) 
+    ? (is_array($_GET['colunas']) ? $_GET['colunas'] : explode(',', $_GET['colunas'])) 
+    : ['nome', 'email', 'telefone'];
 $colunas_permitidas = ['id', 'nome', 'email', 'telefone'];
 $colunas_selecionadas = array_intersect($colunas_selecionadas, $colunas_permitidas);
 
@@ -42,7 +44,7 @@ if (empty($colunas_selecionadas)) {
 
 $colunas_sql = implode(", ", array_unique(array_merge($colunas_selecionadas, ['id'])));
 $ordenar_por = isset($_GET['ordenar_por']) ? $_GET['ordenar_por'] : 'id';
-$ordem = isset($_GET['ordem']) ? $_GET['ordem'] : 'DESC';
+$ordem = isset($_GET['ordem']) ? $_GET['ordem'] : 'ASC';
 $colunas_permitidas_ordenacao = ['id', 'nome', 'email', 'telefone'];
 
 if (!in_array($ordenar_por, $colunas_permitidas_ordenacao)) {
@@ -72,6 +74,20 @@ $conn->close();
 
 ob_start();
 ?>
+
+<style>
+    /* Hide the table initially without affecting layout using opacity */
+    #datatablesSimple {
+        opacity: 0;
+    }
+
+    /* Force dropend dropdown to open to the right */
+    .dropdown.dropend .dropdown-menu {
+        top: 0;
+        left: 100%;
+        margin-left: 0.5rem; /* Space between button and menu */
+    }
+</style>
 
 <div class="container py-4">
     <?php if ($success_message): ?>
@@ -186,17 +202,17 @@ ob_start();
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkNome" name="colunas[]" data-column="nome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
+                                        <input type="checkbox" class="form-check-input me-2" id="checkNome" name="colunas[]" value="nome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" name="colunas[]" data-column="email" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
+                                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" name="colunas[]" value="email" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone" name="colunas[]" data-column="telefone" <?php echo in_array('telefone', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone
+                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone" name="colunas[]" value="telefone" <?php echo in_array('telefone', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone
                                     </label>
                                 </li>
                             </ul>
@@ -255,8 +271,9 @@ ob_start();
 <script>
     window.addEventListener('DOMContentLoaded', event => {
         const datatablesSimple = document.getElementById('datatablesSimple');
+        let dataTable;
         if (datatablesSimple) {
-            new simpleDatatables.DataTable(datatablesSimple, {
+            dataTable = new simpleDatatables.DataTable(datatablesSimple, {
                 searchable: false,
                 perPage: 10,
                 perPageSelect: [10, 25, 50, 100],
@@ -268,6 +285,9 @@ ob_start();
                     noResults: "Nenhum resultado encontrado para {query}"
                 }
             });
+
+            // Show the table after DataTables has initialized by changing opacity
+            datatablesSimple.style.opacity = '1';
         }
 
         // Add event listeners for delete buttons
@@ -296,6 +316,51 @@ ob_start();
                 autohide: true,
                 delay: 3000
             }).show();
+        }
+
+        // Initialize dropdown to prevent flipping
+        const dropdownElement = document.getElementById('dropdownMenuButton');
+        if (dropdownElement) {
+            new bootstrap.Dropdown(dropdownElement, {
+                popperConfig(popperOptions) {
+                    return {
+                        ...popperOptions,
+                        placement: 'right-start', // Force placement to right
+                        modifiers: [
+                            ...(popperOptions.modifiers || []),
+                            {
+                                name: 'flip',
+                                enabled: false // Disable flipping
+                            }
+                        ]
+                    };
+                }
+            });
+        }
+
+        // Handle column selection checkboxes
+        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const form = document.getElementById('filterForm');
+                const formData = new FormData(form);
+                let queryString = new URLSearchParams(formData).toString();
+                console.log('Submitting form with query string:', queryString);
+                form.submit();
+            });
+        });
+
+        // Add real-time search functionality
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (dataTable) {
+                        dataTable.search(this.value);
+                    }
+                }, 300); // 300ms delay to prevent too many requests
+            });
         }
     });
 

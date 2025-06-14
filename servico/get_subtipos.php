@@ -79,7 +79,7 @@ if ($result->num_rows > 0) {
         echo '<tr>';
         echo '<td>' . htmlspecialchars($row['nome']) . '</td>';
         echo '<td>' . htmlspecialchars($row['descricao']) . '</td>';
-        echo '<td>' . number_format($row['preco'], 2, ',', '.') . ' €</td>';
+        echo '<td>' . number_format($row['preco'], 2, ',', '.') . ' MZN</td>';
         echo '<td>' . htmlspecialchars($row['duracao']) . ' min</td>';
         echo '<td>';
         echo '<a href="editar_subservico.php?id=' . $row['id'] . '" class="btn btn-warning btn-sm">Editar</a> ';

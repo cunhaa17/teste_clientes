@@ -147,7 +147,7 @@ ob_start();
                 </div>
 
                 <div class="mb-3">
-                    <label for="preco" class="form-label">Preço (€) *</label>
+                    <label for="preco" class="form-label">Preço (MZN) *</label>
                     <input type="number" step="0.01" class="form-control" id="preco" name="preco" 
                            value="<?php echo number_format($subtipo['preco'], 2, '.', ''); ?>" required>
                 </div>

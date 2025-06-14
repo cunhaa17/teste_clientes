@@ -8,6 +8,8 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
+$title = "Horários - Gestão"; 
+
 // Verifica se a sessão está iniciada corretamente
 if (!isset($_SESSION['utilizador_id'])) {
     header("Location: ../login.php");
@@ -126,7 +128,6 @@ ob_start();
 
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Gestão de Agenda de Funcionários</h1>
         <a href="adicionar_horario.php" class="btn btn-success">Adicionar Novo Horário</a>
     </div>
     

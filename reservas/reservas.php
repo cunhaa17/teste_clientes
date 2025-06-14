@@ -20,7 +20,7 @@ if ($_SESSION['utilizador_tipo'] !== 'admin' && $_SESSION['utilizador_tipo'] !==
     exit();
 }
 
-$title = "Gestão de Reservas";
+$title = "Reservas - Gestão";
 include_once '../includes/db_conexao.php';
 
 if (isset($_GET['clear'])) {
@@ -53,8 +53,9 @@ $data_inicio = isset($_GET['data_inicio']) ? $_GET['data_inicio'] : '';
 $data_fim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';
 
 // Colunas e ordenação
-$colunas_selecionadas = isset($_GET['colunas']) ? explode(',', $_GET['colunas']) : 
-    ['data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario'];
+$colunas_selecionadas = isset($_GET['colunas']) 
+    ? (is_array($_GET['colunas']) ? $_GET['colunas'] : explode(',', $_GET['colunas'])) 
+    : ['data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario'];
 $colunas_permitidas = ['id', 'data_reserva', 'status', 'cliente', 'servico', 'subtipo', 'funcionario', 'observacao'];
 $colunas_selecionadas = array_intersect($colunas_selecionadas, $colunas_permitidas);
 
@@ -124,15 +125,17 @@ ob_start();
 ?>
 
 <style>
-.dropdown-menu-end {
+/* No longer needed as dropend handles position */
+/* .dropdown-menu-end {
     right: 0;
     left: auto;
-}
-.dropdown-menu {
+} */
+/* No longer needed as dropend handles position */
+/* .dropdown-menu {
     margin-top: 0;
-}
-/* Custom: Dropdown opens to the right */
-.dropdown-menu-side {
+} */
+/* Custom: Dropdown opens to the right - no longer needed with Bootstrap's dropend */
+/* .dropdown-menu-side {
     left: 100% !important;
     top: 0 !important;
     right: auto !important;
@@ -140,9 +143,26 @@ ob_start();
     margin-left: 0.1rem;
     min-width: 10rem;
     position: absolute;
-}
+} */
 .btn-group {
     position: relative;
+}
+
+/* Force dropend dropdown to open to the right */
+.dropdown.dropend .dropdown-item {
+    position: relative;
+}
+
+.dropdown.dropend .dropdown-menu {
+    top: 0;
+    left: 100%;
+    margin-left: 0.5rem; /* Space between button and menu */
+}
+
+/* Ensure labels inside dropdown items wrap text and have enough space */
+.dropdown-item .form-check-label {
+    white-space: normal;
+    word-wrap: break-word; /* Ensure long words break */
 }
 
 /* Melhorar o estilo dos toasts */
@@ -286,45 +306,45 @@ ob_start();
                             <i class="bi bi-printer me-2"></i>Imprimir
                         </button>
                         <!-- Dropdown com filtros -->
-                        <div class="dropdown">
+                        <div class="dropdown dropend">
                             <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-columns-gap me-2"></i>Selecionar Colunas
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkData" name="colunas[]" data-column="data_reserva" <?php echo in_array('data_reserva', $colunas_selecionadas) ? 'checked' : ''; ?>> Data
+                                        <input type="checkbox" class="form-check-input me-2" id="checkData" name="colunas[]" value="data_reserva" <?php echo in_array('data_reserva', $colunas_selecionadas) ? 'checked' : ''; ?>> Data
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkStatus" name="colunas[]" data-column="status" <?php echo in_array('status', $colunas_selecionadas) ? 'checked' : ''; ?>> Status
+                                        <input type="checkbox" class="form-check-input me-2" id="checkStatus" name="colunas[]" value="status" <?php echo in_array('status', $colunas_selecionadas) ? 'checked' : ''; ?>> Status
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkCliente" name="colunas[]" data-column="cliente" <?php echo in_array('cliente', $colunas_selecionadas) ? 'checked' : ''; ?>> Cliente
+                                        <input type="checkbox" class="form-check-input me-2" id="checkCliente" name="colunas[]" value="cliente" <?php echo in_array('cliente', $colunas_selecionadas) ? 'checked' : ''; ?>> Cliente
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkServico" name="colunas[]" data-column="servico" <?php echo in_array('servico', $colunas_selecionadas) ? 'checked' : ''; ?>> Serviço
+                                        <input type="checkbox" class="form-check-input me-2" id="checkServico" name="colunas[]" value="servico" <?php echo in_array('servico', $colunas_selecionadas) ? 'checked' : ''; ?>> Serviço
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkSubtipo" name="colunas[]" data-column="subtipo" <?php echo in_array('subtipo', $colunas_selecionadas) ? 'checked' : ''; ?>> Subtipo
+                                        <input type="checkbox" class="form-check-input me-2" id="checkSubtipo" name="colunas[]" value="subtipo" <?php echo in_array('subtipo', $colunas_selecionadas) ? 'checked' : ''; ?>> Subtipo
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkFuncionario" name="colunas[]" data-column="funcionario" <?php echo in_array('funcionario', $colunas_selecionadas) ? 'checked' : ''; ?>> Funcionário
+                                        <input type="checkbox" class="form-check-input me-2" id="checkFuncionario" name="colunas[]" value="funcionario" <?php echo in_array('funcionario', $colunas_selecionadas) ? 'checked' : ''; ?>> Funcionário
                                     </label>
                                 </li>
                                 <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkObservacao" name="colunas[]" data-column="observacao" <?php echo in_array('observacao', $colunas_selecionadas) ? 'checked' : ''; ?>> Observação
+                                        <input type="checkbox" class="form-check-input me-2" id="checkObservacao" name="colunas[]" value="observacao" <?php echo in_array('observacao', $colunas_selecionadas) ? 'checked' : ''; ?>> Observação
                                     </label>
                                 </li>
                                 <?php } ?>
@@ -475,6 +495,17 @@ ob_start();
         if (errorToast) {
             initializeToast(errorToast, 'Error');
         }
+
+        // Handle column selection checkboxes
+        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const form = document.getElementById('filterForm');
+                const formData = new FormData(form);
+                let queryString = new URLSearchParams(formData).toString();
+                console.log('Submitting form with query string:', queryString);
+                form.submit();
+            });
+        });
     });
 
     document.addEventListener('DOMContentLoaded', function() {

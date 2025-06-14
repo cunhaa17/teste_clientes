@@ -92,7 +92,7 @@ ob_start();
                 </div>
 
                 <div class="mb-3">
-                    <label for="preco" class="form-label">Preço (€) *</label>
+                    <label for="preco" class="form-label">Preço (MZN) *</label>
                     <input type="text" class="form-control" id="preco" name="preco" 
                            value="<?php echo number_format($servico['preco'], 2, ',', ''); ?>" required>
                 </div>

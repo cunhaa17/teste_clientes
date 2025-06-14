@@ -8,7 +8,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-$title = "Funcionários"; // Alterado de Clientes para Funcionários
+$title = "Funcionários - Gestão"; // Alterado de Clientes para Funcionários
 include_once '../includes/db_conexao.php';
 
 if (isset($_GET['clear'])) {
@@ -33,7 +33,9 @@ if (isset($_SESSION['mensagem'])) {
 
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 // Definir colunas específicas para funcionários
-$colunas_selecionadas = isset($_GET['colunas']) ? explode(',', $_GET['colunas']) : ['nome', 'email', 'localidade', 'telefone1', 'telefone2']; // Colunas padrão para funcionários (removido 'id')
+$colunas_selecionadas = isset($_GET['colunas']) 
+    ? (is_array($_GET['colunas']) ? $_GET['colunas'] : explode(',', $_GET['colunas'])) 
+    : ['nome', 'email', 'localidade', 'telefone1', 'telefone2']; // Colunas padrão para funcionários (removido 'id')
 $colunas_permitidas = ['id', 'nome', 'email', 'morada', 'localidade', 'telefone1', 'telefone2']; // Colunas permitidas para funcionários
 $colunas_selecionadas = array_intersect($colunas_selecionadas, $colunas_permitidas);
 
@@ -85,6 +87,13 @@ ob_start();
     #datatablesSimple {
         opacity: 0;
     }
+
+    /* Force dropend dropdown to open to the right */
+    .dropdown.dropend .dropdown-menu {
+        top: 0;
+        left: 100%;
+        margin-left: 0.5rem; /* Space between button and menu */
+    }
 </style>
 
 <div class="container py-4">
@@ -118,6 +127,9 @@ ob_start();
                         <?php echo htmlspecialchars($error_message); ?>
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
                 </div>
             </div>
         </div>
@@ -190,39 +202,39 @@ ob_start();
                             <i class="bi bi-printer me-2"></i>Imprimir
                         </button>
                         <!-- Dropdown com filtros -->
-                        <div class="dropdown">
+                        <div class="dropdown dropend">
                             <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-columns-gap me-2"></i>Selecionar Colunas
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkNome" name="colunas[]" data-column="nome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
+                                        <input type="checkbox" class="form-check-input me-2" id="checkNome" name="colunas[]" value="nome" <?php echo in_array('nome', $colunas_selecionadas) ? 'checked' : ''; ?>> Nome
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" name="colunas[]" data-column="email" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
+                                        <input type="checkbox" class="form-check-input me-2" id="checkEmail" name="colunas[]" value="email" <?php echo in_array('email', $colunas_selecionadas) ? 'checked' : ''; ?>> Email
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkMorada" name="colunas[]" data-column="morada" <?php echo in_array('morada', $colunas_selecionadas) ? 'checked' : ''; ?>> Morada
+                                        <input type="checkbox" class="form-check-input me-2" id="checkMorada" name="colunas[]" value="morada" <?php echo in_array('morada', $colunas_selecionadas) ? 'checked' : ''; ?>> Morada
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkLocalidade" name="colunas[]" data-column="localidade" <?php echo in_array('localidade', $colunas_selecionadas) ? 'checked' : ''; ?>> Localidade
+                                        <input type="checkbox" class="form-check-input me-2" id="checkLocalidade" name="colunas[]" value="localidade" <?php echo in_array('localidade', $colunas_selecionadas) ? 'checked' : ''; ?>> Localidade
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone1" name="colunas[]" data-column="telefone1" <?php echo in_array('telefone1', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 1
+                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone1" name="colunas[]" value="telefone1" <?php echo in_array('telefone1', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 1
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item fs-5">
-                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone2" name="colunas[]" data-column="telefone2" <?php echo in_array('telefone2', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 2
+                                        <input type="checkbox" class="form-check-input me-2" id="checkTelefone2" name="colunas[]" value="telefone2" <?php echo in_array('telefone2', $colunas_selecionadas) ? 'checked' : ''; ?>> Telefone 2
                                     </label>
                                 </li>
                             </ul>
@@ -326,6 +338,37 @@ ob_start();
                 delay: 3000
             }).show();
         }
+
+        // Initialize dropdown to prevent flipping
+        const dropdownElement = document.getElementById('dropdownMenuButton');
+        if (dropdownElement) {
+            new bootstrap.Dropdown(dropdownElement, {
+                popperConfig(popperOptions) {
+                    return {
+                        ...popperOptions,
+                        placement: 'right-start', // Force placement to right
+                        modifiers: [
+                            ...(popperOptions.modifiers || []),
+                            {
+                                name: 'flip',
+                                enabled: false // Disable flipping
+                            }
+                        ]
+                    };
+                }
+            });
+        }
+
+        // Handle column selection checkboxes
+        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const form = document.getElementById('filterForm');
+                const formData = new FormData(form);
+                let queryString = new URLSearchParams(formData).toString();
+                console.log('Submitting form with query string:', queryString);
+                form.submit();
+            });
+        });
     });
 
     function confirmDelete(id) {
@@ -337,6 +380,30 @@ ob_start();
         const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
         modal.show();
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
+        const progressBar = document.getElementById('toastProgressBar');
+        if (toastEl && progressBar) {
+            let width = 100;
+            const duration = 3000; // 3 segundos
+            const intervalTime = 30;
+
+            // Mostra o toast
+            const toast = new bootstrap.Toast(toastEl, { autohide: false });
+            toast.show();
+
+            // Anima a barra
+            const interval = setInterval(() => {
+                width -= (intervalTime / duration) * 100;
+                progressBar.style.width = width + "%";
+                if (width <= 0) {
+                    clearInterval(interval);
+                    toast.hide();
+                }
+            }, intervalTime);
+        }
+    });
 </script>
 
 <?php
