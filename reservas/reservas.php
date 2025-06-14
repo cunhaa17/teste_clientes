@@ -201,6 +201,9 @@ ob_start();
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
+                </div>
             </div>
         <?php endif; ?>
         
@@ -214,6 +217,9 @@ ob_start();
                         <?php echo htmlspecialchars($success_message); ?>
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
                 </div>
             </div>
         <?php endif; ?>
@@ -468,6 +474,30 @@ ob_start();
         
         if (errorToast) {
             initializeToast(errorToast, 'Error');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
+        const progressBar = document.getElementById('toastProgressBar');
+        if (toastEl && progressBar) {
+            let width = 100;
+            const duration = 3000; // 3 segundos
+            const intervalTime = 30;
+
+            // Mostra o toast
+            const toast = new bootstrap.Toast(toastEl, { autohide: false });
+            toast.show();
+
+            // Anima a barra
+            const interval = setInterval(() => {
+                width -= (intervalTime / duration) * 100;
+                progressBar.style.width = width + "%";
+                if (width <= 0) {
+                    clearInterval(interval);
+                    toast.hide();
+                }
+            }, intervalTime);
         }
     });
 </script>

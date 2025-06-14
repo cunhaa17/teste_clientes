@@ -100,6 +100,9 @@ ob_start();
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
+                </div>
             </div>
         </div>
     <?php endif; ?>
