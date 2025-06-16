@@ -128,9 +128,35 @@ ob_start();
         left: 100%;
         margin-left: 0.5rem; /* Space between button and menu */
     }
+
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-overlay .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
 </style>
 
 <div class="container py-4">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+
     <!-- Filtros -->
     <div class="card shadow-sm mb-4">
         <div class="card-header py-3">
@@ -241,6 +267,64 @@ ob_start();
 <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
 
 <script>
+    // Código para mensagens de sucesso e erro
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mostrar o efeito de carregamento inicial
+        document.querySelector('.loading-overlay').classList.remove('fade-out');
+        document.querySelector('.loading-overlay').style.display = 'flex';
+        
+        // Esconder o overlay após 1 segundo
+        setTimeout(function() {
+            document.querySelector('.loading-overlay').classList.add('fade-out');
+            setTimeout(function() {
+                document.querySelector('.loading-overlay').style.display = 'none';
+            }, 300);
+        }, 1000);
+
+        <?php if ($success_message): ?>
+        // Mostrar mensagem de sucesso após o carregamento
+        setTimeout(function() {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: '<?php echo addslashes($success_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        }, 1000);
+        <?php endif; ?>
+
+        <?php if ($error_message): ?>
+        // Mostrar mensagem de erro após o carregamento
+        setTimeout(function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: '<?php echo addslashes($error_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        }, 1000);
+        <?php endif; ?>
+    });
+</script>
+
+<script>
+    // Código para DataTables e outras funcionalidades
     window.addEventListener('DOMContentLoaded', event => {
         const datatablesSimple = document.getElementById('datatablesSimple');
         let dataTable;
@@ -321,40 +405,6 @@ ob_start();
                 });
             });
         });
-
-        <?php if ($success_message): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: '<?php echo addslashes($success_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        <?php endif; ?>
-
-        <?php if ($error_message): ?>
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: '<?php echo addslashes($error_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        <?php endif; ?>
     });
 </script>
 

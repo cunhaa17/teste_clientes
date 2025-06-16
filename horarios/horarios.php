@@ -8,7 +8,7 @@ header("Cache-Control: no-cache, no-store, must-revalidate");
 header("Pragma: no-cache");
 header("Expires: 0");
 
-$title = "Horários - Gestão"; 
+$title = "Horários - Gestão";
 
 // Verifica se a sessão está iniciada corretamente
 if (!isset($_SESSION['utilizador_id'])) {
@@ -110,7 +110,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 ob_start();
 ?>
 
+<style>
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-overlay .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .loading-overlay.fade-out {
+        opacity: 0;
+        transition: opacity 0.3s ease-out;
+    }
+</style>
+
 <div class="container py-4">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+    
     <div class="d-flex justify-content-between align-items-center mb-4">
         <a href="adicionar_horario.php" class="btn btn-success">Adicionar Novo Horário</a>
     </div>
@@ -229,78 +262,143 @@ include '../includes/layout.php';
 ?>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle delete buttons
-    document.querySelectorAll('.delete-btn').forEach(function(button) {
-        button.addEventListener('click', function() {
-            const horarioId = this.getAttribute('data-id');
-            
+    // Código para mensagens de sucesso e erro
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mostrar o efeito de carregamento inicial
+        document.querySelector('.loading-overlay').classList.remove('fade-out');
+        document.querySelector('.loading-overlay').style.display = 'flex';
+        
+        // Esconder o overlay após 1 segundo
+        setTimeout(function() {
+            document.querySelector('.loading-overlay').classList.add('fade-out');
+            setTimeout(function() {
+                document.querySelector('.loading-overlay').style.display = 'none';
+            }, 300);
+        }, 1000);
+
+        <?php if ($success_message): ?>
+        // Mostrar mensagem de sucesso após o carregamento
+        setTimeout(function() {
             Swal.fire({
-                title: 'Tem certeza?',
-                text: "Esta ação não poderá ser revertida!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Sim, excluir!',
-                cancelButtonText: 'Cancelar'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = 'horarios.php';
-                    
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'horario_id';
-                    input.value = horarioId;
-                    
-                    const deleteInput = document.createElement('input');
-                    deleteInput.type = 'hidden';
-                    deleteInput.name = 'delete_horario';
-                    deleteInput.value = '1';
-                    
-                    form.appendChild(input);
-                    form.appendChild(deleteInput);
-                    document.body.appendChild(form);
-                    form.submit();
+                icon: 'success',
+                title: 'Sucesso!',
+                text: '<?php echo addslashes($success_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
                 }
+            });
+        }, 1000);
+        <?php endif; ?>
+
+        <?php if ($error_message): ?>
+        // Mostrar mensagem de erro após o carregamento
+        setTimeout(function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: '<?php echo addslashes($error_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        }, 1000);
+        <?php endif; ?>
+    });
+</script>
+
+<script>
+    // Código para DataTables e outras funcionalidades
+    window.addEventListener('DOMContentLoaded', event => {
+        const datatablesSimple = document.getElementById('datatablesSimple');
+        let dataTable;
+        if (datatablesSimple) {
+            dataTable = new simpleDatatables.DataTable(datatablesSimple, {
+                searchable: false,
+                perPage: 10,
+                perPageSelect: [10, 25, 50, 100],
+                labels: {
+                    placeholder: "Pesquisar...",
+                    perPage: "Itens por página",
+                    noRows: "Nenhum horário encontrado",
+                    info: "Mostrando {start} até {end} de {rows} horários",
+                    noResults: "Nenhum resultado encontrado para {query}"
+                }
+            });
+
+            datatablesSimple.style.opacity = '1';
+        }
+
+        // Handle column selection checkboxes
+        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const form = document.getElementById('filterForm');
+                form.submit();
+            });
+        });
+
+        // Add real-time search functionality
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (dataTable) {
+                        dataTable.search(this.value);
+                    }
+                }, 300);
+            });
+        }
+
+        // Handle delete buttons
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const horarioId = this.dataset.id;
+                
+                Swal.fire({
+                    title: 'Tem certeza?',
+                    text: "Esta ação não poderá ser revertida!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sim, excluir!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = 'horarios.php';
+                        
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'horario_id';
+                        input.value = horarioId;
+                        
+                        const deleteInput = document.createElement('input');
+                        deleteInput.type = 'hidden';
+                        deleteInput.name = 'delete_horario';
+                        deleteInput.value = '1';
+                        
+                        form.appendChild(input);
+                        form.appendChild(deleteInput);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
             });
         });
     });
-
-    <?php if ($success_message): ?>
-        Swal.fire({
-            icon: 'success',
-            title: 'Sucesso!',
-            text: '<?php echo addslashes($success_message); ?>',
-            showConfirmButton: true,
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#3085d6',
-            timer: 3000,
-            timerProgressBar: true,
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
-            }
-        });
-    <?php endif; ?>
-
-    <?php if ($error_message): ?>
-        Swal.fire({
-            icon: 'error',
-            title: 'Erro!',
-            text: '<?php echo addslashes($error_message); ?>',
-            showConfirmButton: true,
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#3085d6',
-            timer: 3000,
-            timerProgressBar: true,
-            didOpen: (toast) => {
-                toast.addEventListener('mouseenter', Swal.stopTimer)
-                toast.addEventListener('mouseleave', Swal.resumeTimer)
-            }
-        });
-    <?php endif; ?>
-});
 </script>

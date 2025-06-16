@@ -104,8 +104,41 @@ $conn->close();
 ob_start();
 ?>
 
+<style>
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.9);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    }
+
+    .loading-overlay .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .loading-overlay.fade-out {
+        opacity: 0;
+        transition: opacity 0.3s ease-out;
+    }
+</style>
+
 <!-- Main Container -->
 <div class="container py-4">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <a href="adicionar_servico.php" class="btn btn-primary">Adicionar Serviço</a>
         <div class="d-flex gap-2">
@@ -183,65 +216,142 @@ ob_start();
 <script src="../assets/js/style.js"></script>
 
 <script>
+    // Código para mensagens de sucesso e erro
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle expand/collapse buttons
-        document.querySelectorAll('.btn-expand').forEach(function(button) {
+        // Mostrar o efeito de carregamento inicial
+        document.querySelector('.loading-overlay').classList.remove('fade-out');
+        document.querySelector('.loading-overlay').style.display = 'flex';
+        
+        // Esconder o overlay após 1 segundo
+        setTimeout(function() {
+            document.querySelector('.loading-overlay').classList.add('fade-out');
+            setTimeout(function() {
+                document.querySelector('.loading-overlay').style.display = 'none';
+            }, 300);
+        }, 1000);
+
+        <?php if ($success_message): ?>
+        // Mostrar mensagem de sucesso após o carregamento
+        setTimeout(function() {
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: '<?php echo addslashes($success_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        }, 1000);
+        <?php endif; ?>
+
+        <?php if ($error_message): ?>
+        // Mostrar mensagem de erro após o carregamento
+        setTimeout(function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: '<?php echo addslashes($error_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        }, 1000);
+        <?php endif; ?>
+    });
+</script>
+
+<script>
+    // Código para DataTables e outras funcionalidades
+    window.addEventListener('DOMContentLoaded', event => {
+        const datatablesSimple = document.getElementById('datatablesSimple');
+        let dataTable;
+        if (datatablesSimple) {
+            dataTable = new simpleDatatables.DataTable(datatablesSimple, {
+                searchable: false,
+                perPage: 10,
+                perPageSelect: [10, 25, 50, 100],
+                labels: {
+                    placeholder: "Pesquisar...",
+                    perPage: "Itens por página",
+                    noRows: "Nenhum serviço encontrado",
+                    info: "Mostrando {start} até {end} de {rows} serviços",
+                    noResults: "Nenhum resultado encontrado para {query}"
+                }
+            });
+
+            datatablesSimple.style.opacity = '1';
+        }
+
+        // Handle column selection checkboxes
+        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const form = document.getElementById('filterForm');
+                form.submit();
+            });
+        });
+
+        // Add real-time search functionality
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (dataTable) {
+                        dataTable.search(this.value);
+                    }
+                }, 300);
+            });
+        }
+
+        // Handle expand buttons
+        document.querySelectorAll('.btn-expand').forEach(button => {
             button.addEventListener('click', function() {
-                const servicoId = this.getAttribute('data-servico-id');
-                const row = document.getElementById('subservicos-' + servicoId);
-                const contentDiv = row.querySelector('.subservicos-content');
+                const servicoId = this.dataset.servicoId;
+                const row = document.getElementById(`subservicos-${servicoId}`);
+                const content = row.querySelector('.subservicos-content');
                 
-                if (row.style.display === 'none' || row.style.display === '') {
-                    // Carregar subtipos
-                    fetch('get_subtipos.php?servico_id=' + servicoId)
+                if (row.style.display === 'none') {
+                    // Mostrar o overlay de carregamento
+                    document.querySelector('.loading-overlay').classList.remove('fade-out');
+                    document.querySelector('.loading-overlay').style.display = 'flex';
+                    
+                    // Fazer a requisição AJAX
+                    fetch(`get_subtipos.php?servico_id=${servicoId}`)
                         .then(response => response.text())
                         .then(html => {
-                            contentDiv.innerHTML = html;
+                            // Esconder o overlay
+                            document.querySelector('.loading-overlay').classList.add('fade-out');
+                            setTimeout(() => {
+                                document.querySelector('.loading-overlay').style.display = 'none';
+                            }, 300);
+                            
+                            content.innerHTML = html;
                             row.style.display = 'table-row';
                             this.textContent = '-';
-                            
-                            // Adicionar eventos aos botões de eliminar subtipo
-                            contentDiv.querySelectorAll('.delete-subtipo').forEach(function(deleteBtn) {
-                                deleteBtn.addEventListener('click', function() {
-                                    const subtipoId = this.getAttribute('data-id');
-                                    
-                                    Swal.fire({
-                                        title: 'Tem certeza?',
-                                        text: "Esta ação não poderá ser revertida!",
-                                        icon: 'warning',
-                                        showCancelButton: true,
-                                        confirmButtonColor: '#d33',
-                                        cancelButtonColor: '#3085d6',
-                                        confirmButtonText: 'Sim, excluir!',
-                                        cancelButtonText: 'Cancelar'
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            const form = document.createElement('form');
-                                            form.method = 'POST';
-                                            form.action = 'eliminar_subtipo.php';
-                                            
-                                            const input = document.createElement('input');
-                                            input.type = 'hidden';
-                                            input.name = 'subtipo_id';
-                                            input.value = subtipoId;
-                                            
-                                            form.appendChild(input);
-                                            document.body.appendChild(form);
-                                            form.submit();
-                                        }
-                                    });
-                                });
-                            });
                         })
                         .catch(error => {
-                            console.error('Erro ao carregar subtipos:', error);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Erro',
-                                text: 'Erro ao carregar subtipos de serviço',
-                                confirmButtonColor: '#3085d6',
-                                confirmButtonText: 'OK'
-                            });
+                            // Esconder o overlay em caso de erro
+                            document.querySelector('.loading-overlay').classList.add('fade-out');
+                            setTimeout(() => {
+                                document.querySelector('.loading-overlay').style.display = 'none';
+                            }, 300);
+                            
+                            console.error('Erro:', error);
+                            content.innerHTML = '<div class="alert alert-danger mt-2">Erro ao carregar subtipos.</div>';
+                            row.style.display = 'table-row';
                         });
                 } else {
                     row.style.display = 'none';
@@ -253,7 +363,7 @@ ob_start();
         // Handle delete buttons
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
-                const servicoId = this.getAttribute('data-id');
+                const servicoId = this.dataset.id;
                 
                 Swal.fire({
                     title: 'Tem certeza?',
@@ -288,40 +398,6 @@ ob_start();
                 });
             });
         });
-
-        <?php if ($success_message): ?>
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: '<?php echo addslashes($success_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        <?php endif; ?>
-
-        <?php if ($error_message): ?>
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: '<?php echo addslashes($error_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        <?php endif; ?>
     });
 </script>
 

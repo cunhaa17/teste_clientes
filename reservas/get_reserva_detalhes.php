@@ -27,14 +27,16 @@ try {
               s.nome as servico_nome, 
               ss.nome as servico_subtipo,
               ss.preco,
+              ss.duracao,
               f.nome as funcionario_nome,
               DATE_FORMAT(r.data_reserva, '%d/%m/%Y') as data,
               TIME_FORMAT(r.data_reserva, '%H:%i') as hora
               FROM reserva r 
               INNER JOIN cliente c ON r.cliente_id = c.id 
-              INNER JOIN servico s ON r.servico_id = s.id 
               INNER JOIN servico_subtipo ss ON r.servico_subtipo_id = ss.id 
-              INNER JOIN funcionario f ON r.funcionario_id = f.id 
+              INNER JOIN servico s ON ss.servico_id = s.id 
+              LEFT JOIN reserva_funcionario rf ON r.id = rf.r_id
+              LEFT JOIN funcionario f ON rf.f_id = f.id 
               WHERE r.id = ?";
 
     $stmt = mysqli_prepare($conn, $query);
@@ -63,12 +65,13 @@ try {
             'cliente_contacto' => $reserva['cliente_contacto'],
             'servico_nome' => $reserva['servico_nome'],
             'servico_subtipo' => $reserva['servico_subtipo'],
-            'preco' => number_format($reserva['preco'], 2, ',', '.'),
-            'funcionario_nome' => $reserva['funcionario_nome'],
+            'preco' => number_format($reserva['preco'], 2, ',', '.') . ' MZN',
+            'duracao' => $reserva['duracao'] . ' min',
+            'funcionario_nome' => $reserva['funcionario_nome'] ?? 'Não atribuído',
             'data' => $reserva['data'],
             'hora' => $reserva['hora'],
             'status' => $reserva['status'],
-            'observacoes' => $reserva['observacao']
+            'observacoes' => $reserva['observacao'] ?? 'Sem observações'
         ]
     ];
 

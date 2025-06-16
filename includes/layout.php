@@ -33,6 +33,48 @@ $base_url = "/PAP/dashboard_pap/";
             --info: #17a2b8;
         }
 
+        /* Loading Overlay Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            position: absolute;
+            margin-top: 80px;
+            color: var(--dark);
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
         body {
             background-color: var(--secondary);
             font-family: 'Poppins', sans-serif;
@@ -403,6 +445,11 @@ $base_url = "/PAP/dashboard_pap/";
     </style>
 </head>
 <body class="d-flex vh-100">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text"><?php echo isset($title) ? $title : 'Editar Horário'; ?></div>
+    </div>
     <div id="toast-global-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
     <div class="sidebar">
         <div class="sidebar-header">
@@ -503,6 +550,41 @@ $base_url = "/PAP/dashboard_pap/";
             }
         });
     });
+    </script>
+
+    <script>
+        // Loading Overlay Handler
+        $(document).ready(function() {
+            // Hide loading overlay when page is fully loaded
+            $(window).on('load', function() {
+                setTimeout(function() {
+                    $('#loadingOverlay').addClass('fade-out');
+                    setTimeout(function() {
+                        $('#loadingOverlay').hide();
+                    }, 500);
+                }, 1000); // Show loading for at least 1 second
+            });
+
+            // If page is already loaded, hide overlay immediately
+            if (document.readyState === 'complete') {
+                $('#loadingOverlay').addClass('fade-out');
+                setTimeout(function() {
+                    $('#loadingOverlay').hide();
+                }, 500);
+            }
+
+            // Show loading overlay during AJAX requests
+            $(document).ajaxStart(function() {
+                $('#loadingOverlay').removeClass('fade-out').show();
+            });
+
+            $(document).ajaxStop(function() {
+                $('#loadingOverlay').addClass('fade-out');
+                setTimeout(function() {
+                    $('#loadingOverlay').hide();
+                }, 500);
+            });
+        });
     </script>
 </body>
 </html>
