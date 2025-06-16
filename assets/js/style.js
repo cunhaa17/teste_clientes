@@ -1,11 +1,5 @@
+// Removed old Toast function and related logic.
 document.addEventListener('DOMContentLoaded', function () {
-    // Exibir Toast de Sucesso por 5 segundos
-    var toastEl = document.getElementById('successToast');
-    if (toastEl) {
-        var toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-        toast.show();
-    }
-
     // Search functionality - only run if we're on a page with search
     const searchInput = document.getElementById('searchInput');
     const resultsContainer = document.querySelector('tbody');
@@ -50,8 +44,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (newTableBody) {
                         resultsContainer.innerHTML = newTableBody.innerHTML;
                         updateColumnVisibility();
-                        // Re-attach delete event listeners to new buttons
-                        attachDeleteEventListeners();
                     }
                 })
                 .catch(error => {
@@ -74,252 +66,35 @@ document.addEventListener('DOMContentLoaded', function () {
         updateColumnVisibility();
     }
 
-    // Delete functionality
-    let itemIdToDelete = null;
-
-    // Function to attach delete event listeners
-    function attachDeleteEventListeners() {
-        document.querySelectorAll(".btn-eliminar").forEach(button => {
-            // Remove existing listeners to avoid duplicates
-            button.removeEventListener("click", handleDeleteClick);
-            button.addEventListener("click", handleDeleteClick);
-        });
-    }
-
-    // Delete button click handler
-    function handleDeleteClick(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        itemIdToDelete = this.getAttribute("data-id");
-        console.log("Delete button clicked, ID:", itemIdToDelete);
-        
-        let modalElement = document.getElementById("confirmDeleteModal");
-        if (modalElement) {
-            let modal = new bootstrap.Modal(modalElement);
-            modal.show();
-        }
-    }
-
-    // Initial attachment of delete event listeners
-    attachDeleteEventListeners();
-
-    // Handle delete confirmation
-    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener("click", function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            if (itemIdToDelete) {
-                // Determine the correct delete URL based on the current page filename
-                let deleteUrl;
-                const currentPath = window.location.pathname;
-                const fileName = currentPath.split('/').pop(); // Get just the filename
-                console.log("Current path:", currentPath);
-                console.log("Current filename:", fileName);
-                
-                // Get the base path
-                const basePath = window.location.pathname.substring(0, window.location.pathname.indexOf('/dashboard_pap') + '/dashboard_pap'.length);
-                console.log("Base path:", basePath);
-                
-                // Map filenames to their corresponding delete URLs
-                if (fileName === 'funcionario.php') {
-                    deleteUrl = basePath + "/funcionario/eliminar_funcionario.php";
-                } else if (fileName === 'servico.php') {
-                    deleteUrl = basePath + "/servico/eliminar_servico.php";
-                } else if (fileName === 'clientes.php') {
-                    deleteUrl = basePath + "/cliente/eliminar_cliente.php";
-                } else if (fileName === 'reservas.php') {
-                    deleteUrl = basePath + "/reservas/eliminar_reserva.php";
-                } else if (fileName === 'horarios.php') {
-                    deleteUrl = basePath + "/horarios/eliminar_horario.php";
-                } else if (fileName === 'subservico.php') {
-                    deleteUrl = basePath + "/servico/eliminar_subservico.php";
-                } else if (fileName === 'agenda.php') {
-                    deleteUrl = basePath + "/agenda/eliminar_agenda.php";
-                } else if (fileName === 'funcionario_servicos.php') {
-                    deleteUrl = basePath + "/funcionario/eliminar_associacao.php";
-                } else if (currentPath.includes("/funcionario/")) {
-                    deleteUrl = basePath + "/funcionario/eliminar_funcionario.php";
-                } else if (currentPath.includes("/servico/")) {
-                    deleteUrl = basePath + "/servico/eliminar_servico.php";
-                } else if (currentPath.includes("/cliente/")) {
-                    deleteUrl = basePath + "/cliente/eliminar_cliente.php";
-                } else if (currentPath.includes("/reservas/")) {
-                    deleteUrl = basePath + "/reservas/eliminar_reserva.php";
-                } else if (currentPath.includes("/horarios/")) {
-                    deleteUrl = basePath + "/horarios/eliminar_horario.php";
-                } else if (currentPath.includes("/subservico/")) {
-                    deleteUrl = basePath + "/servico/eliminar_subservico.php";
-                } else if (currentPath.includes("/agenda/")) {
-                    deleteUrl = basePath + "/agenda/eliminar_agenda.php";
-                } else if (currentPath.includes("/funcionario_servicos/")) {
-                    deleteUrl = basePath + "/funcionario/eliminar_associacao.php";
-                }
-
-                console.log("Selected delete URL:", deleteUrl);
-
-                if (deleteUrl) {
-                    console.log("Sending delete request to:", deleteUrl, "with ID:", itemIdToDelete);
-                    
-                    // Show loading state
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Eliminando...';
-                    this.disabled = true;
-                    
-                    fetch(deleteUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: `id=${encodeURIComponent(itemIdToDelete)}`
-                    })
-                    .then(response => {
-                        console.log("Response status:", response.status);
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log("Response data:", data);
-                        
-                        // Reset button state
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                        
-                        // Close modal
-                        let modalElement = document.getElementById("confirmDeleteModal");
-                        let modal = bootstrap.Modal.getInstance(modalElement);
-                        if (modal) {
-                            modal.hide();
-                        }
-                        
-                        // Clean up modal backdrop
-                        setTimeout(() => {
-                            document.querySelector('.modal-backdrop')?.remove();
-                            document.body.classList.remove('modal-open');
-                            document.body.style.overflow = '';
-                            document.body.style.paddingRight = '';
-                        }, 300);
-
-                        if (data.status === "success") {
-                            // Show success message and reload page
-                            showToast(data.message || "Item eliminado com sucesso!", "bg-success");
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
-                        } else {
-                            showToast(data.message || "Erro ao eliminar item.", "bg-danger");
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        
-                        // Reset button state
-                        this.innerHTML = originalText;
-                        this.disabled = false;
-                        
-                        showToast("Erro na requisição. Tente novamente.", "bg-danger");
-                        
-                        // Close modal on error
-                        let modalElement = document.getElementById("confirmDeleteModal");
-                        let modal = bootstrap.Modal.getInstance(modalElement);
-                        if (modal) {
-                            modal.hide();
-                        }
-                    });
-                } else {
-                    console.error("Could not determine delete URL for current page");
-                    showToast("Erro: não foi possível determinar a URL de eliminação.", "bg-danger");
-                }
-            }
-        });
-    }
-
-    // Handle modal close
-    const closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
-    closeButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const modalElement = document.getElementById("confirmDeleteModal");
-            if (modalElement) {
-                const modal = bootstrap.Modal.getInstance(modalElement);
-                if (modal) {
-                    modal.hide();
-                    // Clean up modal backdrop
-                    setTimeout(() => {
-                        document.querySelector('.modal-backdrop')?.remove();
-                        document.body.classList.remove('modal-open');
-                        document.body.style.overflow = '';
-                        document.body.style.paddingRight = '';
-                    }, 300);
-                }
+    // Export functionality
+    $('#exportPdfBtn').on('click', function() {
+        Swal.fire({
+            icon: 'info',
+            title: 'Gerando PDF...',
+            text: 'Por favor, aguarde enquanto geramos o relatório.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
             }
         });
     });
 
-    function showToast(message, colorClass) {
-        // Create toast container if it doesn't exist
-        let toastContainer = document.querySelector('.toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-            toastContainer.style.zIndex = '1050';
-            document.body.appendChild(toastContainer);
-        }
-
-        // Create toast element
-        const toastId = 'toast-' + Date.now();
-        const toastElement = document.createElement('div');
-        toastElement.id = toastId;
-        toastElement.className = "toast align-items-center text-white border-0";
-        toastElement.setAttribute('role', 'alert');
-        toastElement.setAttribute('aria-live', 'assertive');
-        toastElement.setAttribute('aria-atomic', 'true');
-        
-        // Set background color
-        if (colorClass === "bg-success") {
-            toastElement.style.background = "linear-gradient(45deg, #28a745, #20c997)";
-        } else if (colorClass === "bg-danger") {
-            toastElement.style.background = "linear-gradient(45deg, #dc3545, #c82333)";
-        } else {
-            toastElement.style.background = "linear-gradient(45deg, #ffc107, #fd7e14)";
-        }
-        
-        toastElement.style.borderRadius = "10px";
-        toastElement.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
-
-        // Set toast content
-        const iconClass = colorClass === "bg-success" ? "bi-check-circle-fill" : 
-                         colorClass === "bg-danger" ? "bi-exclamation-circle-fill" : "bi-info-circle-fill";
-        
-        toastElement.innerHTML = `
-            <div class="d-flex align-items-center p-3">
-                <div class="toast-icon me-3">
-                    <i class="bi ${iconClass} fs-4"></i>
-                </div>
-                <div class="toast-body fs-5">
-                    ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        `;
-
-        // Add to container and show
-        toastContainer.appendChild(toastElement);
-        
-        let toast = new bootstrap.Toast(toastElement, {
-            animation: true,
-            autohide: true,
-            delay: 3000
+    $('#exportExcelBtn').on('click', function() {
+        Swal.fire({
+            icon: 'info',
+            title: 'Gerando Excel...',
+            text: 'Por favor, aguarde enquanto geramos o relatório.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
         });
-        
-        toast.show();
-        
-        // Remove element after hiding
-        toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
-        });
+    });
+
+    // Sync Status function
+    function updateSyncStatus() {
+        const now = new Date();
+        $('#syncStatus').text(`Atualizado: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
     }
 
     // Date filter functionality - only run if we're on a page with date filtering
@@ -343,21 +118,39 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Evento ao clicar em "Aplicar"
-        document.getElementById("applyDate").addEventListener("click", function () {
-            const selectedDate = datepicker.value.trim();
+        document.getElementById("applyDateFilter").addEventListener("click", function () {
+            const selectedDate = datepicker.value;
             if (selectedDate) {
-                const rows = reservasTableBody.querySelectorAll("tr");
-                rows.forEach(row => {
-                    const dateCell = row.cells[2].textContent.trim();
-                    const formattedDate = dateCell.split("/").reverse().join("-"); 
-                    row.style.display = formattedDate === selectedDate ? "" : "none";
-                });
-
-                const modal = bootstrap.Modal.getInstance(datePickerModal);
-                modal.hide();
-            } else {
-                alert("Por favor, selecione uma data.");
+                // Filtra as linhas da tabela com base na data selecionada
+                const rows = reservasTableBody.getElementsByTagName("tr");
+                for (let row of rows) {
+                    const dateCell = row.querySelector("td:nth-child(2)"); // Ajuste o índice conforme necessário
+                    if (dateCell) {
+                        const rowDate = dateCell.textContent.trim();
+                        if (rowDate === selectedDate) {
+                            row.style.display = "";
+                        } else {
+                            row.style.display = "none";
+                        }
+                    }
+                }
             }
+            // Fecha o modal
+            const modal = bootstrap.Modal.getInstance(datePickerModal);
+            modal.hide();
+        });
+
+        // Evento ao clicar em "Limpar"
+        document.getElementById("clearDateFilter").addEventListener("click", function () {
+            datepicker.value = "";
+            // Mostra todas as linhas da tabela
+            const rows = reservasTableBody.getElementsByTagName("tr");
+            for (let row of rows) {
+                row.style.display = "";
+            }
+            // Fecha o modal
+            const modal = bootstrap.Modal.getInstance(datePickerModal);
+            modal.hide();
         });
     }
 
@@ -368,31 +161,10 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.addEventListener('click', function() {
                 var servicoId = this.getAttribute('data-servico-id');
                 var row = document.getElementById('subservicos-' + servicoId);
-                var contentDiv = row.querySelector('.subservicos-content');
-
-                if (row.style.display === 'none') {
-                    fetch('get_subtipos.php?servico_id=' + servicoId)
-                        .then(response => response.text())
-                        .then(html => {
-                            contentDiv.innerHTML = html;
-                            row.style.display = '';
-                            this.textContent = '-';
-                            
-                            let subservicoIdToDelete = null;
-                            
-                            document.querySelectorAll('.btn-eliminar-subservico').forEach(function(deleteBtn) {
-                                deleteBtn.addEventListener('click', function() {
-                                    subservicoIdToDelete = this.getAttribute('data-id');
-                                    let modalElement = document.getElementById('confirmDeleteSubservicoModal');
-                                    let modal = new bootstrap.Modal(modalElement);
-                                    modal.show();
-                                });
-                            });
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Erro ao carregar subtipos de serviço');
-                        });
+                
+                if (row.style.display === 'none' || row.style.display === '') {
+                    row.style.display = 'table-row';
+                    this.textContent = '-';
                 } else {
                     row.style.display = 'none';
                     this.textContent = '+';
@@ -460,14 +232,32 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                             statusCell.innerHTML = `<span class="badge ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
                         }
-                        showToast("Status atualizado com sucesso!", "bg-success");
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sucesso!',
+                            text: "Status atualizado com sucesso!",
+                            confirmButtonColor: '#6C5CE7',
+                            confirmButtonText: 'OK'
+                        });
                     } else {
-                        showToast(data.message || "Erro ao atualizar status.", "bg-warning");
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Atenção!',
+                            text: data.message || "Erro ao atualizar status.",
+                            confirmButtonColor: '#6C5CE7',
+                            confirmButtonText: 'OK'
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    showToast("Erro ao atualizar status.", "bg-dark");
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: "Erro ao atualizar status.",
+                        confirmButtonColor: '#6C5CE7',
+                        confirmButtonText: 'OK'
+                    });
                 });
             });
         });
@@ -488,25 +278,218 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    /**
-     * Animate a regressive progress bar for a Bootstrap toast.
-     * @param {HTMLElement} toastEl - The toast element (with id 'successToast' or 'errorToast')
-     * @param {HTMLElement} progressBar - The progress bar element inside the toast
-     * @param {number} duration - Duration in ms (default 3000)
-     */
-    function animateToastProgressBar(toastEl, progressBar, duration = 3000) {
-        if (!toastEl || !progressBar) return;
-        let width = 100;
-        const intervalTime = 30;
-        const toast = new bootstrap.Toast(toastEl, { autohide: false });
-        toast.show();
-        const interval = setInterval(() => {
-            width -= (intervalTime / duration) * 100;
-            progressBar.style.width = width + "%";
-            if (width <= 0) {
-                clearInterval(interval);
-                toast.hide();
+    // Faturamento page specific code
+    const datatablesFaturamento = document.getElementById('datatablesFaturamento');
+    if (datatablesFaturamento) {
+        new simpleDatatables.DataTable(datatablesFaturamento, {
+            searchable: true,
+            perPage: 10,
+            perPageSelect: [10, 25, 50, 100],
+            labels: {
+                placeholder: "Pesquisar...",
+                perPage: "Itens por página",
+                noRows: "Nenhuma reserva encontrada",
+                info: "Mostrando {start} até {end} de {rows} reservas",
+                noResults: "Nenhum resultado encontrado para {query}"
             }
-        }, intervalTime);
+        });
+
+        // Show loading overlay on page load
+        $('.loading-overlay').addClass('active');
+        
+        // Hide loading overlay when page is fully loaded
+        $(window).on('load', function() {
+            setTimeout(function() {
+                $('.loading-overlay').removeClass('active');
+            }, 500);
+            updateSyncStatus(); // Update sync status after page load
+        });
+
+        // Handle payment status change
+        $('.payment-status-select').on('change', function() {
+            const reservaId = $(this).data('reserva-id');
+            const newStatus = $(this).val();
+            const select = $(this);
+
+            // Show loading overlay
+            $('.loading-overlay').addClass('active');
+
+            $.ajax({
+                url: 'update_payment_status.php',
+                type: 'POST',
+                data: {
+                    reserva_id: reservaId,
+                    pagamento_status: newStatus
+                },
+                dataType: 'json',
+                success: function(result) {
+                    if (result.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sucesso!',
+                            text: 'Status de pagamento atualizado com sucesso!',
+                            confirmButtonColor: '#6C5CE7',
+                            confirmButtonText: 'OK'
+                        });
+                        // Update the select's class to match the new status
+                        select.removeClass('status-pendente status-pago status-cancelado')
+                             .addClass('status-' + newStatus);
+
+                        // Atualizar os cards
+                        $.ajax({
+                            url: 'get_faturamento_stats.php',
+                            type: 'GET',
+                            data: {
+                                data_inicio: $('#data_inicio').val(),
+                                data_fim: $('#data_fim').val(),
+                                status_filter: $('#status_filter').val(),
+                                cliente_filter: $('#cliente_filter').val()
+                            },
+                            success: function(stats) {
+                                // Atualizar os valores dos cards
+                                $('.card-text').eq(0).text(stats.total_faturado + ' MZN');
+                                $('.card-text').eq(1).text(stats.media_por_fatura + ' MZN');
+                                $('.card-text').eq(2).text(stats.faturas_pendentes);
+                                $('.card-text').eq(3).text(stats.faturas_pagas);
+                            },
+                            error: function() {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Erro',
+                                    text: 'Erro ao atualizar estatísticas',
+                                    confirmButtonColor: '#6C5CE7',
+                                    confirmButtonText: 'OK'
+                                });
+                            },
+                            complete: function() {
+                                // Hide loading overlay only after both requests are complete
+                                $('.loading-overlay').removeClass('active');
+                            }
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Erro',
+                            text: 'Erro ao atualizar status de pagamento: ' + result.message,
+                            confirmButtonColor: '#6C5CE7',
+                            confirmButtonText: 'OK'
+                        });
+                        // Revert the select to its previous value
+                        select.val(select.data('previous-value'));
+                        // Hide loading overlay on error
+                        $('.loading-overlay').removeClass('active');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Erro',
+                        text: 'Erro ao processar a solicitação: ' + error,
+                        confirmButtonColor: '#6C5CE7',
+                        confirmButtonText: 'OK'
+                    });
+                    // Revert the select to its previous value
+                    select.val(select.data('previous-value'));
+                    // Hide loading overlay on error
+                    $('.loading-overlay').removeClass('active');
+                }
+            });
+        });
+
+        // Store the previous value before change
+        $('.payment-status-select').on('focus', function() {
+            $(this).data('previous-value', $(this).val());
+        });
+
+        // Error handling for AJAX requests
+        // $(document).ajaxError(function(event, jqXHR, settings, error) {
+        //     showToast('Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.', 'error');
+        // });
+
+        // Sync Status function
+        function updateSyncStatus() {
+            const now = new Date();
+            $('#syncStatus').text(`Atualizado: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`);
+        }
+
+        // Export functionality
+        $('#exportPdfBtn').on('click', function() {
+            Swal.fire({
+                icon: 'info',
+                title: 'Gerando PDF...',
+                text: 'Por favor, aguarde enquanto geramos o relatório.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        });
+
+        $('#exportExcelBtn').on('click', function() {
+            Swal.fire({
+                icon: 'info',
+                title: 'Gerando Excel...',
+                text: 'Por favor, aguarde enquanto geramos o relatório.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        });
+    }
+
+    // Index page specific code
+    const indexPageElements = document.getElementById('statusFilter'); // A unique element from index.php
+
+    if (indexPageElements) {
+        // Status filter functionality (keep this if still needed for status)
+        $('#statusFilter').on('change', function() {
+            const selectedStatus = $(this).val().toLowerCase();
+            const rows = $('#reservasTableBody tr');
+            let visibleRows = 0;
+
+            console.log('Selected Status:', selectedStatus); // DEBUG
+            console.log('Rows Length:', rows.length); // DEBUG
+
+            rows.each(function() {
+                const statusCell = $(this).find('.status-badge').text().trim().toLowerCase();
+                const isVisible = selectedStatus === '' || statusCell === selectedStatus;
+                
+                console.log('Row Status:', statusCell, 'Is Visible:', isVisible); // DEBUG
+
+                $(this).toggle(isVisible);
+                if (isVisible) visibleRows++;
+            });
+
+            // Show toast message
+            Swal.fire({
+                icon: 'info',
+                title: 'Filtro Atualizado',
+                text: selectedStatus === '' ? 'Mostrando todos os registros' : `Filtrado por: ${selectedStatus}`,
+                confirmButtonColor: '#6C5CE7',
+                confirmButtonText: 'OK'
+            });
+        });
+
+        // Removed client-side Date filter functionality - handled by AJAX in index.php
+
+        // Card hover effects (keep this)
+        $('.card').hover(
+            function() { $(this).addClass('animate__animated animate__pulse'); },
+            function() { $(this).removeClass('animate__animated animate__pulse'); }
+        );
+
+        // Refresh functionality (keep this)
+        $('#refreshReservas').on('click', function() {
+            const $btn = $(this);
+            $btn.prop('disabled', true);
+            $btn.html('<i class="fas fa-spinner fa-spin mr-2"></i>Atualizando...');
+            
+            $('.loading-overlay').addClass('active');
+            
+            setTimeout(function() {
+                location.reload();
+            }, 1000);
+        });
     }
 });

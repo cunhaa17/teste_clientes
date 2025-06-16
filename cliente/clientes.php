@@ -16,6 +16,47 @@ if (isset($_GET['clear'])) {
     exit();
 }
 
+// Processar exclusão de cliente
+if (isset($_POST['delete_client'])) {
+    $client_id = $_POST['client_id'];
+    
+    try {
+        // Primeiro, verificar se existem reservas associadas
+        $check_sql = "SELECT COUNT(*) as count FROM Reserva WHERE cliente_id = $client_id";
+        $result = $conn->query($check_sql);
+        
+        if ($result === false) {
+            throw new Exception("Erro ao verificar reservas: " . $conn->error);
+        }
+        
+        $row = $result->fetch_assoc();
+        $has_reservas = $row['count'] > 0;
+        
+        if ($has_reservas) {
+            $_SESSION['error'] = "Não é possível excluir este cliente pois existem reservas associadas a ele.";
+        } else {
+            // Excluir o cliente
+            $delete_sql = "DELETE FROM Cliente WHERE id = $client_id";
+            $delete_result = $conn->query($delete_sql);
+            
+            if ($delete_result === false) {
+                throw new Exception("Erro ao excluir cliente: " . $conn->error);
+            }
+            
+            if ($conn->affected_rows > 0) {
+                $_SESSION['success'] = "Cliente excluído com sucesso!";
+            } else {
+                $_SESSION['error'] = "Erro ao excluir cliente.";
+            }
+        }
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Erro ao excluir cliente: " . $e->getMessage();
+    }
+    
+    header('Location: clientes.php');
+    exit();
+}
+
 // Mensagens de sucesso/erro
 if (isset($_SESSION['success'])) {
     $success_message = $_SESSION['success'];
@@ -24,9 +65,9 @@ if (isset($_SESSION['success'])) {
     $success_message = '';
 }
 
-if (isset($_SESSION['mensagem'])) {
-    $error_message = $_SESSION['mensagem'];
-    unset($_SESSION['mensagem']);
+if (isset($_SESSION['error'])) {
+    $error_message = $_SESSION['error'];
+    unset($_SESSION['error']);
 } else {
     $error_message = '';
 }
@@ -90,75 +131,6 @@ ob_start();
 </style>
 
 <div class="container py-4">
-    <?php if ($success_message): ?>
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-            <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div class="d-flex align-items-center p-3">
-                    <div class="toast-icon me-3">
-                        <i class="bi bi-check-circle-fill fs-4"></i>
-                    </div>
-                    <div class="toast-body fs-5">
-                        <?php echo htmlspecialchars($success_message); ?>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($error_message): ?>
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-            <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div class="d-flex align-items-center p-3">
-                    <div class="toast-icon me-3">
-                        <i class="bi bi-exclamation-circle-fill fs-4"></i>
-                    </div>
-                    <div class="toast-body fs-5">
-                        <?php echo htmlspecialchars($error_message); ?>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <!-- Modal de Confirmação -->
-    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true" data-bs-backdrop="false">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
-                <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
-                    <h5 class="modal-title" id="confirmDeleteLabel">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Atenção: Eliminação de Cliente
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body text-center py-4">
-                    <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
-                    <h4 class="mt-3 mb-3">Tem certeza que deseja eliminar este cliente?</h4>
-                    <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
-                </div>
-                <div class="modal-footer border-0 justify-content-center pb-4">
-                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
-                        <i class="bi bi-x-circle me-2"></i>Cancelar
-                    </button>
-                    <form id="deleteForm" method="POST" action="eliminar_cliente.php" style="display: inline;">
-                        <input type="hidden" name="id" id="deleteId">
-                        <button type="submit" class="btn btn-danger px-4" style="border-radius: 8px;">
-                            <i class="bi bi-trash me-2"></i>Eliminar
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Filtros -->
     <div class="card shadow-sm mb-4">
         <div class="card-header py-3">
@@ -252,7 +224,7 @@ ob_start();
                                     <a href="editar_cliente.php?id=<?php echo urlencode($cliente['id']); ?>" class="btn btn-warning btn-sm">
                                         <i class="bi bi-pencil-square me-1"></i>Editar
                                     </a>
-                                    <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $cliente['id']; ?>" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                                    <button class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $cliente['id']; ?>">
                                         <i class="bi bi-trash me-1"></i>Eliminar
                                     </button>
                                 </td>
@@ -286,65 +258,13 @@ ob_start();
                 }
             });
 
-            // Show the table after DataTables has initialized by changing opacity
             datatablesSimple.style.opacity = '1';
-        }
-
-        // Add event listeners for delete buttons
-        document.querySelectorAll('.btn-eliminar').forEach(button => {
-            button.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                confirmDelete(id);
-            });
-        });
-
-        // Inicializar toasts
-        const successToast = document.getElementById('successToast');
-        const errorToast = document.getElementById('errorToast');
-        
-        if (successToast) {
-            new bootstrap.Toast(successToast, {
-                animation: true,
-                autohide: true,
-                delay: 3000
-            }).show();
-        }
-        
-        if (errorToast) {
-            new bootstrap.Toast(errorToast, {
-                animation: true,
-                autohide: true,
-                delay: 3000
-            }).show();
-        }
-
-        // Initialize dropdown to prevent flipping
-        const dropdownElement = document.getElementById('dropdownMenuButton');
-        if (dropdownElement) {
-            new bootstrap.Dropdown(dropdownElement, {
-                popperConfig(popperOptions) {
-                    return {
-                        ...popperOptions,
-                        placement: 'right-start', // Force placement to right
-                        modifiers: [
-                            ...(popperOptions.modifiers || []),
-                            {
-                                name: 'flip',
-                                enabled: false // Disable flipping
-                            }
-                        ]
-                    };
-                }
-            });
         }
 
         // Handle column selection checkboxes
         document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 const form = document.getElementById('filterForm');
-                const formData = new FormData(form);
-                let queryString = new URLSearchParams(formData).toString();
-                console.log('Submitting form with query string:', queryString);
                 form.submit();
             });
         });
@@ -359,43 +279,82 @@ ob_start();
                     if (dataTable) {
                         dataTable.search(this.value);
                     }
-                }, 300); // 300ms delay to prevent too many requests
+                }, 300);
             });
         }
-    });
 
-    function confirmDelete(id) {
-        if (!id) {
-            console.error('ID inválido');
-            return;
-        }
-        document.getElementById('deleteId').value = id;
-        const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
-        modal.show();
-    }
+        // Handle delete buttons
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const clientId = this.dataset.id;
+                
+                Swal.fire({
+                    title: 'Tem certeza?',
+                    text: "Esta ação não poderá ser revertida!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sim, excluir!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = 'clientes.php';
+                        
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'client_id';
+                        input.value = clientId;
+                        
+                        const deleteInput = document.createElement('input');
+                        deleteInput.type = 'hidden';
+                        deleteInput.name = 'delete_client';
+                        deleteInput.value = '1';
+                        
+                        form.appendChild(input);
+                        form.appendChild(deleteInput);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+                });
+            });
+        });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
-        const progressBar = document.getElementById('toastProgressBar');
-        if (toastEl && progressBar) {
-            let width = 100;
-            const duration = 3000; // 3 segundos
-            const intervalTime = 30;
-
-            // Mostra o toast
-            const toast = new bootstrap.Toast(toastEl, { autohide: false });
-            toast.show();
-
-            // Anima a barra
-            const interval = setInterval(() => {
-                width -= (intervalTime / duration) * 100;
-                progressBar.style.width = width + "%";
-                if (width <= 0) {
-                    clearInterval(interval);
-                    toast.hide();
+        <?php if ($success_message): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: '<?php echo addslashes($success_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
                 }
-            }, intervalTime);
-        }
+            });
+        <?php endif; ?>
+
+        <?php if ($error_message): ?>
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: '<?php echo addslashes($error_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        <?php endif; ?>
     });
 </script>
 

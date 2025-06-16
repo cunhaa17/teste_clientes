@@ -28,6 +28,28 @@ $sql_funcionarios = "SELECT id, nome FROM funcionario ORDER BY nome";
 $result_funcionarios = $conn->query($sql_funcionarios);
 $funcionarios = $result_funcionarios->fetch_all(MYSQLI_ASSOC);
 
+// Função para verificar sobreposição de horários
+function verificarSobreposicao($conn, $funcionario_id, $data_inicio, $data_fim) {
+    $sql = "SELECT COUNT(*) as count FROM agenda_funcionario 
+            WHERE funcionario_id = ? 
+            AND (
+                (data_inicio <= ? AND data_fim > ?) OR
+                (data_inicio < ? AND data_fim >= ?)
+            )";
+            
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("issss", 
+        $funcionario_id,
+        $data_fim, $data_inicio,
+        $data_fim, $data_inicio
+    );
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    
+    return $row['count'] > 0;
+}
+
 // Processar o formulário quando enviado
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $funcionario_id = $conn->real_escape_string($_POST['funcionario_id']);
@@ -98,6 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $data_inicio_manha = $data_atual . ' ' . $hora_entrada_manha;
                     $data_fim_manha = $data_atual . ' ' . $hora_saida_manha;
                     
+                    // Verificar sobreposição para o horário da manhã
+                    if (verificarSobreposicao($conn, $funcionario_id, $data_inicio_manha, $data_fim_manha)) {
+                        $errors[] = "Já existe um horário cadastrado para o período da manhã em " . date('d/m/Y', strtotime($data_atual));
+                        $sucesso = false;
+                        break;
+                    }
+                    
                     $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES ('$funcionario_id', '$data_inicio_manha', '$data_fim_manha')";
                     
                     if (!$conn->query($sql)) {
@@ -110,6 +139,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (!empty($hora_entrada_tarde) && !empty($hora_saida_tarde)) {
                         $data_inicio_tarde = $data_atual . ' ' . $hora_entrada_tarde;
                         $data_fim_tarde = $data_atual . ' ' . $hora_saida_tarde;
+                        
+                        // Verificar sobreposição para o horário da tarde
+                        if (verificarSobreposicao($conn, $funcionario_id, $data_inicio_tarde, $data_fim_tarde)) {
+                            $errors[] = "Já existe um horário cadastrado para o período da tarde em " . date('d/m/Y', strtotime($data_atual));
+                            $sucesso = false;
+                            break;
+                        }
                         
                         $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES ('$funcionario_id', '$data_inicio_tarde', '$data_fim_tarde')";
                         
@@ -125,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($sucesso) {
                 $conn->commit();
                 $_SESSION['success'] = "Horários adicionados com sucesso!";
-                header("Location: agenda_funcionarios.php");
+                header("Location: horarios.php");
                 exit();
             } else {
                 $conn->rollback();
@@ -156,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Se não houver erros, registrar a folga (não inserindo nenhum horário)
         if (empty($errors)) {
             $_SESSION['success'] = "Folga registrada com sucesso para " . date('d/m/Y', strtotime($data_folga));
-            header("Location: agenda_funcionarios.php");
+            header("Location: horarios.php");
             exit();
         }
     }
@@ -178,13 +214,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "O horário de fim deve ser posterior ao horário de início";
         }
         
+        // Verificar sobreposição para o horário específico
+        if (empty($errors) && verificarSobreposicao($conn, $funcionario_id, $data_inicio_especifica, $data_fim_especifica)) {
+            $errors[] = "Já existe um horário cadastrado para este período";
+        }
+        
         // Se não houver erros, inserir o horário específico
         if (empty($errors)) {
             $sql = "INSERT INTO agenda_funcionario (funcionario_id, data_inicio, data_fim) VALUES ('$funcionario_id', '$data_inicio_especifica', '$data_fim_especifica')";
             
             if ($conn->query($sql)) {
                 $_SESSION['success'] = "Horário específico adicionado com sucesso!";
-                header("Location: agenda_funcionarios.php");
+                header("Location: horarios.php");
                 exit();
             } else {
                 $errors[] = "Erro ao adicionar horário: " . $conn->error;
@@ -230,7 +271,7 @@ ob_start();
             <div class="tab-content" id="horarioTabContent">
                 <!-- Formulário de Horário Normal -->
                 <div class="tab-pane fade show active" id="normal" role="tabpanel" aria-labelledby="normal-tab">
-                    <form method="POST" action="./guardar_horario.php">
+                    <form method="POST" action="adicionar_horario.php">
                         <input type="hidden" name="tipo" value="normal">
                         
                         <div class="mb-3">

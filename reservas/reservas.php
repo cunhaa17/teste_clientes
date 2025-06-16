@@ -28,22 +28,49 @@ if (isset($_GET['clear'])) {
     exit();
 }
 
-// CAPTURAR E LIMPAR AS MENSAGENS DE SESSÃO IMEDIATAMENTE
-$mensagem = '';
-$success_message = '';
-
-if (isset($_SESSION['mensagem'])) {
-    $mensagem = $_SESSION['mensagem'];
-    unset($_SESSION['mensagem']); // Limpar imediatamente após capturar
+// Processar exclusão de reserva
+if (isset($_POST['delete_reserva'])) {
+    $reserva_id = $_POST['reserva_id'];
+    
+    try {
+        // Excluir a reserva
+        $delete_sql = "DELETE FROM Reserva WHERE id = $reserva_id";
+        $delete_result = $conn->query($delete_sql);
+        
+        if ($delete_result === false) {
+            throw new Exception("Erro ao excluir reserva: " . $conn->error);
+        }
+        
+        if ($conn->affected_rows > 0) {
+            $_SESSION['success'] = "Reserva excluída com sucesso!";
+        } else {
+            $_SESSION['error'] = "Erro ao excluir reserva.";
+        }
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Erro ao excluir reserva: " . $e->getMessage();
+    }
+    
+    header('Location: reservas.php');
+    exit();
 }
 
+// Mensagens de sucesso/erro
 if (isset($_SESSION['success'])) {
     $success_message = $_SESSION['success'];
-    unset($_SESSION['success']); // Limpar imediatamente após capturar
+    unset($_SESSION['success']);
+} else {
+    $success_message = '';
+}
+
+if (isset($_SESSION['error'])) {
+    $error_message = $_SESSION['error'];
+    unset($_SESSION['error']);
+} else {
+    $error_message = '';
 }
 
 // Debug logging
-error_log("DEBUG: reservas.php - Mensagem de erro: " . $mensagem);
+error_log("DEBUG: reservas.php - Mensagem de erro: " . $error_message);
 error_log("DEBUG: reservas.php - Mensagem de sucesso: " . $success_message);
 
 // Configurações de filtro e paginação
@@ -210,14 +237,14 @@ ob_start();
 
     <!-- Alertas de Sucesso/Erro -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-        <?php if ($mensagem): ?>
+        <?php if ($error_message): ?>
             <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
                 <div class="d-flex align-items-center p-3">
                     <div class="toast-icon me-3">
                         <i class="bi bi-exclamation-circle-fill fs-4"></i>
                     </div>
                     <div class="toast-body fs-5">
-                        <?php echo htmlspecialchars($mensagem); ?>
+                        <?php echo htmlspecialchars($error_message); ?>
                     </div>
                     <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
@@ -426,7 +453,7 @@ ob_start();
                                     <i class="bi bi-pencil-square me-1"></i>Editar
                                 </a>
                                 <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
-                                <button class="btn btn-danger btn-sm btn-eliminar" data-id="<?php echo $reserva['id']; ?>" data-bs-toggle="modal" data-bs-target="#confirmDeleteModal">
+                                <button class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $reserva['id']; ?>">
                                     <i class="bi bi-trash me-1"></i>Eliminar
                                 </button>
                                 <?php } ?>
@@ -461,75 +488,78 @@ ob_start();
             });
         }
 
-        // Delete button click handler
-        document.querySelectorAll('.btn-eliminar').forEach(button => {
+        // Handle delete buttons
+        document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
-                const id = this.getAttribute('data-id');
-                document.getElementById('deleteId').value = id;
-            });
-        });
-
-        // Initialize toasts
-        function initializeToast(toastElement, type) {
-            if (toastElement && typeof bootstrap !== 'undefined') {
-                const toast = new bootstrap.Toast(toastElement, {
-                    animation: true,
-                    autohide: true,
-                    delay: 5000
+                const reservaId = this.dataset.id;
+                
+                Swal.fire({
+                    title: 'Tem certeza?',
+                    text: "Esta ação não poderá ser revertida!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sim, excluir!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = 'reservas.php';
+                        
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'reserva_id';
+                        input.value = reservaId;
+                        
+                        const deleteInput = document.createElement('input');
+                        deleteInput.type = 'hidden';
+                        deleteInput.name = 'delete_reserva';
+                        deleteInput.value = '1';
+                        
+                        form.appendChild(input);
+                        form.appendChild(deleteInput);
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
                 });
-                toast.show();
-                console.log(type + ' toast initialized and shown');
-            } else {
-                console.error('Bootstrap not available or toast element not found');
-            }
-        }
-
-        // Initialize success and error toasts
-        const successToast = document.getElementById('successToast');
-        const errorToast = document.getElementById('errorToast');
-
-        if (successToast) {
-            initializeToast(successToast, 'Success');
-        }
-        
-        if (errorToast) {
-            initializeToast(errorToast, 'Error');
-        }
-
-        // Handle column selection checkboxes
-        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const form = document.getElementById('filterForm');
-                const formData = new FormData(form);
-                let queryString = new URLSearchParams(formData).toString();
-                console.log('Submitting form with query string:', queryString);
-                form.submit();
             });
         });
-    });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
-        const progressBar = document.getElementById('toastProgressBar');
-        if (toastEl && progressBar) {
-            let width = 100;
-            const duration = 3000; // 3 segundos
-            const intervalTime = 30;
-
-            // Mostra o toast
-            const toast = new bootstrap.Toast(toastEl, { autohide: false });
-            toast.show();
-
-            // Anima a barra
-            const interval = setInterval(() => {
-                width -= (intervalTime / duration) * 100;
-                progressBar.style.width = width + "%";
-                if (width <= 0) {
-                    clearInterval(interval);
-                    toast.hide();
+        <?php if ($success_message): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Sucesso!',
+                text: '<?php echo addslashes($success_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
                 }
-            }, intervalTime);
-        }
+            });
+        <?php endif; ?>
+
+        <?php if ($error_message): ?>
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro!',
+                text: '<?php echo addslashes($error_message); ?>',
+                showConfirmButton: true,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.addEventListener('mouseenter', Swal.stopTimer)
+                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+                }
+            });
+        <?php endif; ?>
     });
 </script>
 

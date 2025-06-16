@@ -374,7 +374,6 @@ ob_start();
                     <div class="col-md-6 mb-3">
                         <label for="status" class="form-label">Status *</label>
                         <select name="status" id="status" class="form-select" required>
-                            <option value="pendente" <?php echo isset($_POST['status']) && $_POST['status'] == 'pendente' ? 'selected' : ''; ?>>Pendente</option>
                             <option value="confirmada" <?php echo isset($_POST['status']) && $_POST['status'] == 'confirmada' ? 'selected' : ''; ?>>Confirmada</option>
                             <option value="cancelada" <?php echo isset($_POST['status']) && $_POST['status'] == 'cancelada' ? 'selected' : ''; ?>>Cancelada</option>
                             <option value="concluída" <?php echo isset($_POST['status']) && $_POST['status'] == 'concluída' ? 'selected' : ''; ?>>Concluída</option>

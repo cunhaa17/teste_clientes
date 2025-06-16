@@ -13,6 +13,9 @@ $base_url = "/PAP/dashboard_pap/";
     <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="<?php echo $base_url; ?>assets/js/style.js"></script>
     <style>
         :root {
             --primary: #A36A07;
@@ -400,9 +403,7 @@ $base_url = "/PAP/dashboard_pap/";
     </style>
 </head>
 <body class="d-flex vh-100">
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <!-- Aqui os toasts serão adicionados dinamicamente -->
-    </div>
+    <div id="toast-global-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
     <div class="sidebar">
         <div class="sidebar-header">
             <img src="<?php echo $base_url; ?>../goncalo_pap/site_pap/images/logo.svg" alt="LotusSPA Logo" class="logo">
@@ -465,6 +466,7 @@ $base_url = "/PAP/dashboard_pap/";
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         // Adiciona classe active ao link atual
         document.addEventListener('DOMContentLoaded', function() {

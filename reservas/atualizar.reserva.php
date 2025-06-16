@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id']) && isset($_POST
     $status = $conn->real_escape_string($_POST['status']);
     
     // Validar status
-    $status_permitidos = ['pendente', 'confirmada', 'cancelada', 'concluída'];
+    $status_permitidos = ['confirmada', 'cancelada', 'concluída'];
     if (!in_array($status, $status_permitidos)) {
         echo json_encode(['status' => 'error', 'message' => 'Status inválido']);
         exit();
@@ -69,7 +69,6 @@ ob_start();
         <div class="mb-3">
             <label for="status" class="form-label">Status</label>
             <select class="form-select" id="status" name="status" required>
-                <option value="pendente" <?= $reserva['status'] == 'pendente' ? 'selected' : '' ?>>Pendente</option>
                 <option value="confirmada" <?= $reserva['status'] == 'confirmada' ? 'selected' : '' ?>>Confirmada</option>
                 <option value="cancelada" <?= $reserva['status'] == 'cancelada' ? 'selected' : '' ?>>Cancelada</option>
                 <option value="concluída" <?= $reserva['status'] == 'concluída' ? 'selected' : '' ?>>Concluída</option>

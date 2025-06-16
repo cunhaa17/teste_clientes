@@ -25,68 +25,52 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 include_once '../includes/db_conexao.php';
 
 // Mensagens de feedback
-$mensagem = isset($_SESSION['mensagem']) ? $_SESSION['mensagem'] : '';
 $success_message = isset($_SESSION['success']) ? $_SESSION['success'] : '';
-unset($_SESSION['mensagem']);
+$error_message = isset($_SESSION['error']) ? $_SESSION['error'] : '';
 unset($_SESSION['success']);
+unset($_SESSION['error']);
+
+if (isset($_GET['clear'])) {
+    header("Location: horarios.php");
+    exit();
+}
 
 // Processar exclusão de horário
-if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id']) && isset($_GET['dia'])) {
-    $id = $conn->real_escape_string($_GET['id']);
-    $dia = $conn->real_escape_string($_GET['dia']);
+if (isset($_POST['delete_horario'])) {
+    $horario_id = $_POST['horario_id'];
     
-    // Buscar os IDs dos registros apenas para o dia específico
-    $query = "SELECT af.id 
-              FROM agenda_funcionario af 
-              INNER JOIN funcionario f ON f.id = af.funcionario_id 
-              WHERE f.id = '$id' 
-              AND DATE(af.data_inicio) = '$dia'";
-    
-    $result = $conn->query($query);
-    if (!$result) {
-        $_SESSION['mensagem'] = "Erro ao buscar registros: " . $conn->error;
-        header("Location: horarios.php");
-        exit();
-    }
-    
-    if ($result->num_rows === 0) {
-        $_SESSION['mensagem'] = "Nenhum registro encontrado para o funcionário ID: $id no dia: $dia";
-        header("Location: horarios.php");
-        exit();
-    }
-    
-    $deleted_ids = array();
-    $success = true;
-    
-    while($row = $result->fetch_assoc()) {
-        $id_a = $row['id'];
-        $delete_query = "DELETE FROM agenda_funcionario WHERE id = '$id_a'";
+    try {
+        // Verificar se existem reservas associadas
+        $check_sql = "SELECT COUNT(*) as count FROM Reserva WHERE horario_id = $horario_id";
+        $check_result = $conn->query($check_sql);
         
-        if (!$conn->query($delete_query)) {
-            $success = false;
-            $_SESSION['mensagem'] = "Erro ao remover o horário ID $id_a: " . $conn->error;
-            break;
+        if ($check_result === false) {
+            throw new Exception("Erro ao verificar reservas: " . $conn->error);
         }
         
-        // Verificar se o registro foi realmente eliminado
-        $check_query = "SELECT COUNT(*) as count FROM agenda_funcionario WHERE id = '$id_a'";
-        $check_result = $conn->query($check_query);
-        $check_row = $check_result->fetch_assoc();
-        
-        if ($check_row['count'] > 0) {
-            $success = false;
-            $_SESSION['mensagem'] = "Falha ao verificar a eliminação do registro ID $id_a";
-            break;
+        $row = $check_result->fetch_assoc();
+        if ($row['count'] > 0) {
+            throw new Exception("Não é possível excluir este horário pois existem reservas associadas a ele.");
         }
         
-        $deleted_ids[] = $id_a;
+        // Excluir o horário
+        $delete_sql = "DELETE FROM Horario WHERE id = $horario_id";
+        $delete_result = $conn->query($delete_sql);
+        
+        if ($delete_result === false) {
+            throw new Exception("Erro ao excluir horário: " . $conn->error);
+        }
+        
+        if ($conn->affected_rows > 0) {
+            $_SESSION['success'] = "Horário excluído com sucesso!";
+        } else {
+            $_SESSION['error'] = "Erro ao excluir horário.";
+        }
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Erro ao excluir horário: " . $e->getMessage();
     }
     
-    if ($success) {
-        $_SESSION['success'] = "Horário do dia $dia removido com sucesso!";
-    }
-    
-    header("Location: horarios.php");
+    header('Location: horarios.php');
     exit();
 }
 
@@ -131,44 +115,6 @@ ob_start();
         <a href="adicionar_horario.php" class="btn btn-success">Adicionar Novo Horário</a>
     </div>
     
-    <?php if ($mensagem): ?>
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-            <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div class="d-flex align-items-center p-3">
-                    <div class="toast-icon me-3">
-                        <i class="bi bi-exclamation-circle-fill fs-4"></i>
-                    </div>
-                    <div class="toast-body fs-5">
-                        <?php echo htmlspecialchars($mensagem); ?>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-    
-    <?php if ($success_message): ?>
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-            <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div class="d-flex align-items-center p-3">
-                    <div class="toast-icon me-3">
-                        <i class="bi bi-check-circle-fill fs-4"></i>
-                    </div>
-                    <div class="toast-body fs-5">
-                        <?php echo htmlspecialchars($success_message); ?>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
-                </div>
-            </div>
-        </div>
-    <?php endif; ?>
-
     <!-- Filtros -->
     <div class="card mb-4">
         <div class="card-header">
@@ -245,7 +191,7 @@ ob_start();
                                         <a href="editar_horario.php?id=<?php echo $row['id_f']; ?>" class="btn btn-sm btn-warning">
                                             <i class="bi bi-pencil-square me-1"></i>Editar
                                         </a>
-                                        <button class="btn btn-sm btn-danger btn-eliminar" data-id="<?php echo $row['id_f']; ?>" data-dia="<?php echo $row['dia']; ?>">
+                                        <button class="btn btn-sm btn-danger delete-btn" data-id="<?php echo $row['id_f']; ?>">
                                             <i class="bi bi-trash me-1"></i>Eliminar
                                         </button>
                                     </div>
@@ -282,107 +228,79 @@ $content = ob_get_clean();
 include '../includes/layout.php';
 ?>
 
-<!-- Modal de Confirmação de Exclusão -->
-<div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-labelledby="modalConfirmDeleteLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0" style="border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.2);">
-            <div class="modal-header border-0 bg-danger text-white" style="border-radius: 15px 15px 0 0;">
-                <h5 class="modal-title" id="modalConfirmDeleteLabel">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    Atenção: Eliminação de Horário
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body text-center py-4">
-                <i class="bi bi-exclamation-circle text-danger" style="font-size: 4rem;"></i>
-                <h4 class="mt-3 mb-3">Tem certeza que deseja eliminar este horário?</h4>
-                <p class="text-muted">Esta ação não pode ser desfeita e todos os dados associados serão permanentemente removidos.</p>
-            </div>
-            <div class="modal-footer border-0 justify-content-center pb-4">
-                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal" style="border-radius: 8px;">
-                    <i class="bi bi-x-circle me-2"></i>Cancelar
-                </button>
-                <a href="#" id="btnConfirmDelete" class="btn btn-danger px-4" style="border-radius: 8px;">
-                    <i class="bi bi-trash me-2"></i>Eliminar
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Modal de confirmação de exclusão
-    const modalConfirmDeleteElement = document.getElementById('modalConfirmDelete');
-    
-    if (!modalConfirmDeleteElement) {
-        console.error('Modal element not found!');
-        return;
-    }
-
-    const btnConfirmDelete = document.getElementById('btnConfirmDelete');
-
-    // Add event listeners for delete buttons
-    document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const id = this.getAttribute('data-id');
-            const dia = this.getAttribute('data-dia');
-            if (!id || !dia) {
-                console.error('ID ou dia inválido');
-                return;
-            }
-            btnConfirmDelete.href = `horarios.php?action=delete&id=${id}&dia=${dia}`;
+    // Handle delete buttons
+    document.querySelectorAll('.delete-btn').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const horarioId = this.getAttribute('data-id');
             
-            // Initialize modal and show it
-            const modal = new bootstrap.Modal(modalConfirmDeleteElement, {
-                backdrop: 'static',
-                keyboard: false
+            Swal.fire({
+                title: 'Tem certeza?',
+                text: "Esta ação não poderá ser revertida!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sim, excluir!',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'horarios.php';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'horario_id';
+                    input.value = horarioId;
+                    
+                    const deleteInput = document.createElement('input');
+                    deleteInput.type = 'hidden';
+                    deleteInput.name = 'delete_horario';
+                    deleteInput.value = '1';
+                    
+                    form.appendChild(input);
+                    form.appendChild(deleteInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
             });
-            modal.show();
         });
     });
 
-    // Inicializar toasts
-    const successToast = document.getElementById('successToast');
-    const errorToast = document.getElementById('errorToast');
-    
-    if (successToast) {
-        new bootstrap.Toast(successToast, {
-            animation: true,
-            autohide: true,
-            delay: 3000
-        }).show();
-    }
-    
-    if (errorToast) {
-        new bootstrap.Toast(errorToast, {
-            animation: true,
-            autohide: true,
-            delay: 3000
-        }).show();
-    }
-
-    const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
-    const progressBar = document.getElementById('toastProgressBar');
-    if (toastEl && progressBar) {
-        let width = 100;
-        const duration = 3000; // 3 segundos
-        const intervalTime = 30;
-
-        // Mostra o toast
-        const toast = new bootstrap.Toast(toastEl, { autohide: false });
-        toast.show();
-
-        // Anima a barra
-        const interval = setInterval(() => {
-            width -= (intervalTime / duration) * 100;
-            progressBar.style.width = width + "%";
-            if (width <= 0) {
-                clearInterval(interval);
-                toast.hide();
+    <?php if ($success_message): ?>
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: '<?php echo addslashes($success_message); ?>',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
             }
-        }, intervalTime);
-    }
+        });
+    <?php endif; ?>
+
+    <?php if ($error_message): ?>
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: '<?php echo addslashes($error_message); ?>',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+    <?php endif; ?>
 });
 </script>
