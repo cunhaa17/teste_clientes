@@ -16,28 +16,79 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 
 include_once '../includes/db_conexao.php';
 
+// Criar pasta de uploads se não existir
+$upload_dir = __DIR__ . '/../../uploads/servicos/';
+if (!file_exists($upload_dir)) {
+    mkdir($upload_dir, 0777, true);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $nome = $conn->real_escape_string($_POST['nome']);
+    $nome = trim($_POST['nome']);
+    if (empty($nome)) {
+        $_SESSION['error'] = "O nome do serviço é obrigatório.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+    $nome = $conn->real_escape_string($nome);
     
     // Verificar se já existe um serviço com o mesmo nome
     $sql_check = "SELECT id FROM servico WHERE nome = '$nome'";
     $result_check = $conn->query($sql_check);
     
     if ($result_check->num_rows > 0) {
-        $_SESSION['mensagem'] = "Já existe um serviço com este nome.";
+        $_SESSION['error'] = "Já existe um serviço com este nome.";
         header("Location: adicionar_servico.php");
         exit();
     }
     
+    // Processar upload da imagem (obrigatório)
+    if (!isset($_FILES['imagem']) || $_FILES['imagem']['error'] !== UPLOAD_ERR_OK) {
+        $_SESSION['error'] = "A imagem é obrigatória.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+    
+    $file = $_FILES['imagem'];
+    $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    $max_size = 5 * 1024 * 1024; // 5MB
+    
+    // Verificar tipo de arquivo
+    if (!in_array($file['type'], $allowed_types)) {
+        $_SESSION['error'] = "Tipo de arquivo não permitido. Use apenas JPG, PNG ou GIF.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+    
+    // Verificar tamanho do arquivo
+    if ($file['size'] > $max_size) {
+        $_SESSION['error'] = "Arquivo muito grande. Tamanho máximo: 5MB.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+    
+    // Gerar nome único para o arquivo
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = 'servico_' . time() . '_' . uniqid() . '.' . $extension;
+    $upload_path = $upload_dir . $filename;
+    
+    // Mover arquivo para pasta de uploads
+    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
+        $_SESSION['error'] = "Erro ao fazer upload da imagem.";
+        header("Location: adicionar_servico.php");
+        exit();
+    }
+    
+    $imagem_path = 'uploads/servicos/' . $filename;
+    
     // Inserir o novo serviço
-    $sql = "INSERT INTO servico (nome) VALUES ('$nome')";
+    $sql = "INSERT INTO servico (nome, imagem) VALUES ('$nome', '$imagem_path')";
     
     if ($conn->query($sql)) {
         $_SESSION['success'] = "Serviço adicionado com sucesso!";
         header("Location: servico.php");
         exit();
     } else {
-        $_SESSION['mensagem'] = "Erro ao adicionar serviço: " . $conn->error;
+        $_SESSION['error'] = "Erro ao adicionar serviço: " . $conn->error;
         header("Location: adicionar_servico.php");
         exit();
     }
@@ -51,75 +102,65 @@ $title = 'Adicionar Serviço';
 ob_start();
 ?>
 <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">Adicionar Serviço</h1>
-        <a href="servico.php" class="btn btn-secondary">Voltar</a>
-    </div>
-
-    <?php 
-    if (isset($_SESSION['error'])) {
-        echo '
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <strong>Erro:</strong> ' . htmlspecialchars($_SESSION['error']) . '
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>';
-        unset($_SESSION['error']);
-    }
-
-    if (isset($_SESSION['success'])) {
-        echo '
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-            <div id="successToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #28a745, #20c997); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div class="d-flex align-items-center p-3">
-                    <div class="toast-icon me-3">
-                        <i class="bi bi-check-circle-fill fs-4"></i>
-                    </div>
-                    <div class="toast-body fs-5">
-                        ' . htmlspecialchars($_SESSION['success']) . '
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
-                </div>
-            </div>
-        </div>';
-
-        unset($_SESSION['success']);
-    }
-
-    if (!empty($error)) {
-        echo '
-        <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1050;">
-            <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true" style="background: linear-gradient(45deg, #dc3545, #c82333); border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-                <div class="d-flex align-items-center p-3">
-                    <div class="toast-icon me-3">
-                        <i class="bi bi-exclamation-circle-fill fs-4"></i>
-                    </div>
-                    <div class="toast-body fs-5">
-                        ' . htmlspecialchars($error) . '
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="progress" style="height: 4px;">
-                    <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" id="toastProgressBar"></div>
-                </div>
-            </div>
-        </div>';
-    }
-    ?>
-
-    <form method="POST">
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome do Serviço</label>
-            <input type="text" class="form-control" id="nome" name="nome" required>
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white text-center">
+          <h3>Adicionar Serviço</h3>
         </div>
-        <button type="submit" class="btn btn-success">Adicionar</button>
-        <a href="servico.php" class="btn btn-secondary">Cancelar</a>
-    </form>
+        <div class="card-body p-4">
+          <form action="adicionar_servico.php" method="POST" enctype="multipart/form-data">
+            <div class="mb-4">
+              <label for="nome" class="form-label fs-5">Nome do Serviço *</label>
+              <input type="text" class="form-control form-control-lg" id="nome" name="nome" required>
+            </div>
+            
+            <div class="mb-4">
+              <label for="imagem" class="form-label fs-5">Imagem do Serviço *</label>
+              <input type="file" class="form-control form-control-lg" id="imagem" name="imagem" accept="image/*" required>
+              <div class="form-text">Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB</div>
+            </div>
+            
+            <div class="mb-4">
+              <div id="preview-container" style="display: none;">
+                <label class="form-label fs-5">Preview da Imagem</label>
+                <div>
+                  <img id="imagem-preview" src="" alt="Preview" class="img-thumbnail" style="max-width: 300px; max-height: 300px;">
+                </div>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn btn-success btn-lg w-100 py-3 fs-5">
+              <i class="bi bi-plus-circle me-2"></i>Adicionar Serviço
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Preview da imagem
+  const imagemInput = document.getElementById('imagem');
+  const previewContainer = document.getElementById('preview-container');
+  const imagemPreview = document.getElementById('imagem-preview');
+  
+  imagemInput.addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imagemPreview.src = e.target.result;
+        previewContainer.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    } else {
+      previewContainer.style.display = 'none';
+    }
+  });
+
   const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
   const progressBar = document.getElementById('toastProgressBar');
   if (toastEl && progressBar) {

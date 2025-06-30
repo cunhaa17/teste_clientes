@@ -15,6 +15,12 @@ if ($_SESSION['utilizador_tipo'] !== 'admin') {
 
 include_once '../includes/db_conexao.php';
 
+// Criar pasta de uploads se não existir
+$upload_dir = __DIR__ . '/../../uploads/subservicos/';
+if (!file_exists($upload_dir)) {
+    mkdir($upload_dir, 0777, true);
+}
+
 if (isset($_GET['servico_id'])) {
     $servico_id = $conn->real_escape_string($_GET['servico_id']);
     
@@ -51,8 +57,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     
+    // Processar upload da imagem (obrigatório)
+    if (!isset($_FILES['imagem']) || $_FILES['imagem']['error'] !== UPLOAD_ERR_OK) {
+        $_SESSION['mensagem'] = "A imagem é obrigatória.";
+        header("Location: adicionar_subservico.php?servico_id=" . $servico_id);
+        exit();
+    }
+    
+    $file = $_FILES['imagem'];
+    $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    $max_size = 5 * 1024 * 1024; // 5MB
+    
+    // Verificar tipo de arquivo
+    if (!in_array($file['type'], $allowed_types)) {
+        $_SESSION['mensagem'] = "Tipo de arquivo não permitido. Use apenas JPG, PNG ou GIF.";
+        header("Location: adicionar_subservico.php?servico_id=" . $servico_id);
+        exit();
+    }
+    
+    // Verificar tamanho do arquivo
+    if ($file['size'] > $max_size) {
+        $_SESSION['mensagem'] = "Arquivo muito grande. Tamanho máximo: 5MB.";
+        header("Location: adicionar_subservico.php?servico_id=" . $servico_id);
+        exit();
+    }
+    
+    // Gerar nome único para o arquivo
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = 'subservico_' . time() . '_' . uniqid() . '.' . $extension;
+    $upload_path = $upload_dir . $filename;
+    
+    // Mover arquivo para pasta de uploads
+    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
+        $_SESSION['mensagem'] = "Erro ao fazer upload da imagem.";
+        header("Location: adicionar_subservico.php?servico_id=" . $servico_id);
+        exit();
+    }
+    
+    $imagem_path = 'uploads/subservicos/' . $filename;
+    
     // Inserir o novo subtipo
-    $sql = "INSERT INTO servico_subtipo (servico_id, nome, descricao, preco, duracao) VALUES ('$servico_id', '$nome', '$descricao', '$preco', '$duracao')";
+    $sql = "INSERT INTO servico_subtipo (servico_id, nome, descricao, preco, duracao, imagem) VALUES ('$servico_id', '$nome', '$descricao', '$preco', '$duracao', '$imagem_path')";
     
     if ($conn->query($sql)) {
         $_SESSION['success'] = "Subtipo adicionado com sucesso!";
@@ -70,7 +115,7 @@ $title = 'Adicionar Subtipo de Serviço';
 ob_start();
 ?>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3">Adicionar Subtipo de Serviço</h1>
         <a href="servico.php" class="btn btn-secondary">Voltar</a>
@@ -130,7 +175,7 @@ ob_start();
     }
     ?>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         <input type="hidden" name="servico_id" value="<?php echo htmlspecialchars($servico_id); ?>">
         
         <div class="mb-3">
@@ -157,6 +202,21 @@ ob_start();
             <label for="duracao" class="form-label">Duração (minutos) *</label>
             <input type="number" class="form-control" id="duracao" name="duracao" required>
         </div>
+        
+        <div class="mb-3">
+            <label for="imagem" class="form-label">Imagem do Subtipo *</label>
+            <input type="file" class="form-control" id="imagem" name="imagem" accept="image/*" required>
+            <div class="form-text">Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB</div>
+        </div>
+        
+        <div class="mb-3">
+            <div id="preview-container" style="display: none;">
+                <label class="form-label">Preview da Imagem</label>
+                <div>
+                    <img id="imagem-preview" src="" alt="Preview" class="img-thumbnail" style="max-width: 300px; max-height: 300px;">
+                </div>
+            </div>
+        </div>
 
         <button type="submit" class="btn btn-success">Adicionar</button>
         <a href="servico.php" class="btn btn-secondary">Cancelar</a>
@@ -165,6 +225,25 @@ ob_start();
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Preview da imagem
+  const imagemInput = document.getElementById('imagem');
+  const previewContainer = document.getElementById('preview-container');
+  const imagemPreview = document.getElementById('imagem-preview');
+  
+  imagemInput.addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imagemPreview.src = e.target.result;
+        previewContainer.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    } else {
+      previewContainer.style.display = 'none';
+    }
+  });
+
   const toastEl = document.getElementById('successToast') || document.getElementById('errorToast');
   const progressBar = document.getElementById('toastProgressBar');
   if (toastEl && progressBar) {

@@ -129,15 +129,43 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'horarios_disponiveis') {
     $data = $conn->real_escape_string($_GET['data']);
     $servico_subtipo_id = $conn->real_escape_string($_GET['servico_subtipo_id']);
     
-    // Buscar horário de funcionamento do funcionário
-    $sql_horario = "SELECT data_inicio, data_fim FROM agenda_funcionario 
-                    WHERE funcionario_id = '$funcionario_id' 
-                    AND DATE(data_inicio) = '$data'
-                    ORDER BY data_inicio";
-    $result_horario = $conn->query($sql_horario);
-    $horarios = $result_horario->fetch_all(MYSQLI_ASSOC);
+    // Verificar se a data é passada
+    $hoje = new DateTime();
+    $dataSelecionada = new DateTime($data);
     
-    if (empty($horarios)) {
+    if ($dataSelecionada < $hoje->setTime(0, 0)) {
+        echo json_encode([
+            'disponivel' => false,
+            'mensagem' => 'Não é possível reservar datas passadas',
+            'horarios' => []
+        ]);
+        exit;
+    }
+    
+    // 1. Buscar duração do serviço
+    $stmt = $conn->prepare("SELECT duracao FROM servico_subtipo WHERE id = ?");
+    $stmt->bind_param("i", $servico_subtipo_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows === 0) {
+        echo json_encode([
+            'disponivel' => false,
+            'mensagem' => 'Serviço não encontrado',
+            'horarios' => []
+        ]);
+        exit;
+    }
+    $duracao = intval($result->fetch_assoc()['duracao']); // duração em minutos
+    $stmt->close();
+    
+    // 2. Buscar agenda do funcionário para o dia
+    $stmt = $conn->prepare("SELECT data_inicio, data_fim FROM agenda_funcionario WHERE funcionario_id = ? AND DATE(data_inicio) = ?");
+    $stmt->bind_param("is", $funcionario_id, $data);
+    $stmt->execute();
+    $agendas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    
+    if (empty($agendas)) {
         echo json_encode([
             'disponivel' => false,
             'mensagem' => 'Funcionário não trabalha neste dia',
@@ -146,65 +174,81 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === 'horarios_disponiveis') {
         exit;
     }
     
-    // Buscar duração do serviço
-    $sql_duracao = "SELECT duracao FROM servico_subtipo WHERE id = '$servico_subtipo_id'";
-    $result_duracao = $conn->query($sql_duracao);
-    $servico = $result_duracao->fetch_assoc();
+    // 3. Buscar reservas existentes do funcionário para o dia
+    $stmt = $conn->prepare("
+        SELECT r.data_reserva, s.duracao
+        FROM reserva r
+        JOIN servico_subtipo s ON r.servico_subtipo_id = s.id
+        WHERE r.funcionario_id = ? AND DATE(r.data_reserva) = ? AND r.status != 'cancelada'
+    ");
+    $stmt->bind_param("is", $funcionario_id, $data);
+    $stmt->execute();
+    $reservas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
     
-    // Buscar reservas existentes
-    $sql = "SELECT r.data_reserva, ss.duracao 
-            FROM reserva r 
-            JOIN servico_subtipo ss ON r.servico_subtipo_id = ss.id 
-            WHERE r.funcionario_id = '$funcionario_id' 
-            AND DATE(r.data_reserva) = '$data' 
-            AND r.status != 'cancelada'
-            ORDER BY r.data_reserva";
+    // 4. Função para verificar conflito com reservas
+    function conflito($inicio, $fim, $reservas) {
+        foreach ($reservas as $reserva) {
+            $r_inicio = new DateTime($reserva['data_reserva']);
+            $r_fim = clone $r_inicio;
+            $r_fim->modify("+" . intval($reserva['duracao']) . " minutes");
+            
+            if ($inicio < $r_fim && $fim > $r_inicio) {
+                return true;
+            }
+        }
+        return false;
+    }
     
-    $result = $conn->query($sql);
-    $reservas = $result->fetch_all(MYSQLI_ASSOC);
-    
-    // Calcular horários disponíveis
+    // 5. Gerar horários disponíveis
     $horarios_disponiveis = [];
-    $duracao_servico = $servico['duracao'];
+    $hora_atual = new DateTime();
     
-    foreach ($horarios as $horario) {
-        $inicio_periodo = strtotime($horario['data_inicio']);
-        $fim_periodo = strtotime($horario['data_fim']);
+    foreach ($agendas as $agenda) {
+        $inicio = new DateTime($agenda['data_inicio']);
+        $fim = new DateTime($agenda['data_fim']);
         
-        // Criar slots de 30 minutos
-        $slot_atual = $inicio_periodo;
-        while ($slot_atual + ($duracao_servico * 60) <= $fim_periodo) {
-            $slot_disponivel = true;
-            $fim_slot = $slot_atual + ($duracao_servico * 60);
+        // Se for o dia atual, ajustar o início para a hora atual + 30 minutos
+        if ($dataSelecionada->format('Y-m-d') === $hora_atual->format('Y-m-d')) {
+            $inicio_ajustado = clone $hora_atual;
+            $inicio_ajustado->modify('+30 minutes');
+            $inicio_ajustado->setTime($inicio_ajustado->format('H'), ceil($inicio_ajustado->format('i') / 30) * 30, 0);
             
-            // Verificar se o slot não conflita com reservas existentes
-            foreach ($reservas as $reserva) {
-                $inicio_reserva = strtotime($reserva['data_reserva']);
-                $fim_reserva = $inicio_reserva + ($reserva['duracao'] * 60);
-                
-                // Verificar sobreposição
-                if (($slot_atual >= $inicio_reserva && $slot_atual < $fim_reserva) ||
-                    ($fim_slot > $inicio_reserva && $fim_slot <= $fim_reserva) ||
-                    ($slot_atual <= $inicio_reserva && $fim_slot >= $fim_reserva)) {
-                    $slot_disponivel = false;
-                    break;
-                }
+            if ($inicio_ajustado > $inicio) {
+                $inicio = $inicio_ajustado;
+            }
+        }
+        
+        while ($inicio < $fim) {
+            $slot_inicio = clone $inicio;
+            $slot_fim = clone $inicio;
+            $slot_fim->modify("+$duracao minutes");
+            
+            if ($slot_fim > $fim) break;
+            
+            if (!conflito($slot_inicio, $slot_fim, $reservas)) {
+                $horarios_disponiveis[] = $slot_inicio->format("H:i");
             }
             
-            if ($slot_disponivel) {
-                $horarios_disponiveis[] = date('H:i', $slot_atual);
-            }
-            
-            // Avançar para o próximo slot (30 minutos)
-            $slot_atual = strtotime('+30 minutes', $slot_atual);
+            // Avançar de bloco em bloco com base na duração do serviço
+            $inicio->modify("+$duracao minutes");
         }
     }
     
-    echo json_encode([
-        'disponivel' => !empty($horarios_disponiveis),
-        'mensagem' => !empty($horarios_disponiveis) ? 'Horários disponíveis encontrados' : 'Nenhum horário disponível',
-        'horarios' => $horarios_disponiveis
-    ]);
+    // 6. Exibir horários disponíveis
+    if (empty($horarios_disponiveis)) {
+        echo json_encode([
+            'disponivel' => false,
+            'mensagem' => 'Sem horários disponíveis',
+            'horarios' => []
+        ]);
+    } else {
+        echo json_encode([
+            'disponivel' => true,
+            'mensagem' => 'Horários disponíveis encontrados',
+            'horarios' => $horarios_disponiveis
+        ]);
+    }
     
     $conn->close();
     exit;
@@ -269,6 +313,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "O status é obrigatório";
     }
     
+    // Validações adicionais baseadas nas regras do site_pap
+    if (empty($errors)) {
+        // Verificar se a data é passada
+        $hoje = new DateTime();
+        $dataSelecionada = new DateTime($data);
+        
+        if ($dataSelecionada < $hoje->setTime(0, 0)) {
+            $errors[] = "Não é possível reservar datas passadas";
+        }
+        
+        // Verificar se o horário é válido para o dia atual
+        if ($dataSelecionada->format('Y-m-d') === $hoje->format('Y-m-d')) {
+            $hora_atual = new DateTime();
+            $hora_reserva = new DateTime($data . ' ' . $hora);
+            $hora_minima = clone $hora_atual;
+            $hora_minima->modify('+30 minutes');
+            
+            if ($hora_reserva < $hora_minima) {
+                $errors[] = "Para o dia atual, só é possível reservar horários a partir de 30 minutos após a hora atual";
+            }
+        }
+        
+        // Verificar se o funcionário trabalha no dia
+        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM agenda_funcionario WHERE funcionario_id = ? AND DATE(data_inicio) = ?");
+        $stmt->bind_param("is", $funcionario_id, $data);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $agenda_count = $result->fetch_assoc()['count'];
+        $stmt->close();
+        
+        if ($agenda_count == 0) {
+            $errors[] = "O funcionário não trabalha neste dia";
+        }
+        
+        // Verificar se o horário está dentro do período de trabalho
+        if ($agenda_count > 0) {
+            $stmt = $conn->prepare("SELECT data_inicio, data_fim FROM agenda_funcionario WHERE funcionario_id = ? AND DATE(data_inicio) = ?");
+            $stmt->bind_param("is", $funcionario_id, $data);
+            $stmt->execute();
+            $agendas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            
+            $hora_reserva = new DateTime($data . ' ' . $hora);
+            $dentro_periodo = false;
+            
+            foreach ($agendas as $agenda) {
+                $inicio = new DateTime($agenda['data_inicio']);
+                $fim = new DateTime($agenda['data_fim']);
+                
+                if ($hora_reserva >= $inicio && $hora_reserva < $fim) {
+                    $dentro_periodo = true;
+                    break;
+                }
+            }
+            
+            if (!$dentro_periodo) {
+                $errors[] = "O horário selecionado está fora do período de trabalho do funcionário";
+            }
+        }
+        
+        // Verificar conflitos com outras reservas
+        $data_hora_reserva = $data . ' ' . $hora;
+        
+        // Buscar duração do serviço
+        $stmt = $conn->prepare("SELECT duracao FROM servico_subtipo WHERE id = ?");
+        $stmt->bind_param("i", $servico_subtipo_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $duracao = intval($result->fetch_assoc()['duracao']);
+        $stmt->close();
+        
+        // Calcular fim da reserva
+        $inicio_reserva = new DateTime($data_hora_reserva);
+        $fim_reserva = clone $inicio_reserva;
+        $fim_reserva->modify("+$duracao minutes");
+        
+        // Buscar reservas conflitantes
+        $stmt = $conn->prepare("
+            SELECT r.data_reserva, s.duracao
+            FROM reserva r
+            JOIN servico_subtipo s ON r.servico_subtipo_id = s.id
+            WHERE r.funcionario_id = ? AND DATE(r.data_reserva) = ? AND r.status != 'cancelada'
+        ");
+        $stmt->bind_param("is", $funcionario_id, $data);
+        $stmt->execute();
+        $reservas = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        
+        foreach ($reservas as $reserva) {
+            $r_inicio = new DateTime($reserva['data_reserva']);
+            $r_fim = clone $r_inicio;
+            $r_fim->modify("+" . intval($reserva['duracao']) . " minutes");
+            
+            if ($inicio_reserva < $r_fim && $fim_reserva > $r_inicio) {
+                $errors[] = "O horário selecionado conflita com uma reserva existente";
+                break;
+            }
+        }
+    }
+    
     // Se não houver erros, insere no banco
     if (empty($errors)) {
         $data_reserva = $data . ' ' . $hora;
@@ -295,7 +439,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 ob_start();
 ?>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="card">
         <div class="card-header">
             <h2>Adicionar Nova Reserva</h2>
@@ -409,6 +553,10 @@ ob_start();
         // Limpar o select de funcionários
         document.getElementById('funcionario_id').innerHTML = '<option value="">Selecione primeiro um serviço</option>';
         
+        // Limpar o select de horários
+        document.getElementById('hora').innerHTML = '<option value="">Selecione um horário</option>';
+        document.getElementById('disponibilidade-mensagem').innerHTML = '';
+        
         if (categoriaId) {
             // Fazer uma requisição AJAX para buscar os subtipos
             const xhr = new XMLHttpRequest();
@@ -430,6 +578,10 @@ ob_start();
         // Limpar o select de funcionários
         funcionarioSelect.innerHTML = '<option value="">Selecione um funcionário</option>';
         
+        // Limpar o select de horários
+        document.getElementById('hora').innerHTML = '<option value="">Selecione um horário</option>';
+        document.getElementById('disponibilidade-mensagem').innerHTML = '';
+        
         if (subtipoId) {
             // Fazer uma requisição AJAX para buscar os funcionários
             const xhr = new XMLHttpRequest();
@@ -443,24 +595,6 @@ ob_start();
         }
     }
     
-    // Inicializar os selects se houver valores salvos
-    document.addEventListener('DOMContentLoaded', function() {
-        <?php if (isset($_POST['servico_id']) && !empty($_POST['servico_id'])): ?>
-            carregarSubtipos();
-            <?php if (isset($_POST['servico_subtipo_id']) && !empty($_POST['servico_subtipo_id'])): ?>
-                setTimeout(function() {
-                    document.getElementById('servico_subtipo_id').value = '<?php echo $_POST['servico_subtipo_id']; ?>';
-                    carregarFuncionarios();
-                    <?php if (isset($_POST['funcionario_id']) && !empty($_POST['funcionario_id'])): ?>
-                        setTimeout(function() {
-                            document.getElementById('funcionario_id').value = '<?php echo $_POST['funcionario_id']; ?>';
-                        }, 500);
-                    <?php endif; ?>
-                }, 500);
-            <?php endif; ?>
-        <?php endif; ?>
-    });
-
     // Função para carregar horários disponíveis
     function carregarHorariosDisponiveis() {
         const funcionarioId = document.getElementById('funcionario_id').value;
@@ -477,33 +611,121 @@ ob_start();
             return;
         }
         
+        // Mostrar loading
+        mensagemDiv.innerHTML = '<span class="text-info">Carregando horários disponíveis...</span>';
+        mensagemDiv.className = 'mt-2 text-info';
+        
         const xhr = new XMLHttpRequest();
         xhr.open('GET', `adicionar_reserva.php?ajax=horarios_disponiveis&funcionario_id=${funcionarioId}&data=${data}&servico_subtipo_id=${servicoSubtipoId}`, true);
         xhr.onload = function() {
             if (xhr.status === 200) {
-                const response = JSON.parse(xhr.responseText);
-                if (response.disponivel) {
-                    response.horarios.forEach(horario => {
-                        const option = document.createElement('option');
-                        option.value = horario;
-                        option.textContent = horario;
-                        horaSelect.appendChild(option);
-                    });
-                    mensagemDiv.innerHTML = `<span class="text-success">${response.mensagem}</span>`;
-                    mensagemDiv.className = 'mt-2 text-success';
-                } else {
-                    mensagemDiv.innerHTML = `<span class="text-danger">${response.mensagem}</span>`;
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.disponivel) {
+                        response.horarios.forEach(horario => {
+                            const option = document.createElement('option');
+                            option.value = horario;
+                            option.textContent = horario;
+                            horaSelect.appendChild(option);
+                        });
+                        mensagemDiv.innerHTML = `<span class="text-success">${response.mensagem}</span>`;
+                        mensagemDiv.className = 'mt-2 text-success';
+                    } else {
+                        mensagemDiv.innerHTML = `<span class="text-danger">${response.mensagem}</span>`;
+                        mensagemDiv.className = 'mt-2 text-danger';
+                    }
+                } catch (e) {
+                    mensagemDiv.innerHTML = '<span class="text-danger">Erro ao processar resposta do servidor</span>';
                     mensagemDiv.className = 'mt-2 text-danger';
                 }
+            } else {
+                mensagemDiv.innerHTML = '<span class="text-danger">Erro ao carregar horários</span>';
+                mensagemDiv.className = 'mt-2 text-danger';
             }
+        };
+        xhr.onerror = function() {
+            mensagemDiv.innerHTML = '<span class="text-danger">Erro de conexão</span>';
+            mensagemDiv.className = 'mt-2 text-danger';
         };
         xhr.send();
     }
+    
+    // Função para validar data mínima
+    function validarDataMinima() {
+        const dataInput = document.getElementById('data');
+        const hoje = new Date().toISOString().split('T')[0];
+        
+        if (dataInput.value < hoje) {
+            dataInput.setCustomValidity('Não é possível selecionar datas passadas');
+        } else {
+            dataInput.setCustomValidity('');
+        }
+    }
+    
+    // Inicializar os selects se houver valores salvos
+    document.addEventListener('DOMContentLoaded', function() {
+        // Definir data mínima como hoje
+        const dataInput = document.getElementById('data');
+        const hoje = new Date().toISOString().split('T')[0];
+        dataInput.min = hoje;
+        
+        // Adicionar validação de data
+        dataInput.addEventListener('change', validarDataMinima);
+        
+        <?php if (isset($_POST['servico_id']) && !empty($_POST['servico_id'])): ?>
+            carregarSubtipos();
+            <?php if (isset($_POST['servico_subtipo_id']) && !empty($_POST['servico_subtipo_id'])): ?>
+                setTimeout(function() {
+                    document.getElementById('servico_subtipo_id').value = '<?php echo $_POST['servico_subtipo_id']; ?>';
+                    carregarFuncionarios();
+                    <?php if (isset($_POST['funcionario_id']) && !empty($_POST['funcionario_id'])): ?>
+                        setTimeout(function() {
+                            document.getElementById('funcionario_id').value = '<?php echo $_POST['funcionario_id']; ?>';
+                            <?php if (isset($_POST['data']) && !empty($_POST['data'])): ?>
+                                setTimeout(function() {
+                                    document.getElementById('data').value = '<?php echo $_POST['data']; ?>';
+                                    carregarHorariosDisponiveis();
+                                    <?php if (isset($_POST['hora']) && !empty($_POST['hora'])): ?>
+                                        setTimeout(function() {
+                                            document.getElementById('hora').value = '<?php echo $_POST['hora']; ?>';
+                                        }, 1000);
+                                    <?php endif; ?>
+                                }, 500);
+                            <?php endif; ?>
+                        }, 500);
+                    <?php endif; ?>
+                }, 500);
+            <?php endif; ?>
+        <?php endif; ?>
+    });
 
     // Adicionar event listeners para carregar horários
     document.getElementById('data').addEventListener('change', carregarHorariosDisponiveis);
     document.getElementById('funcionario_id').addEventListener('change', carregarHorariosDisponiveis);
     document.getElementById('servico_subtipo_id').addEventListener('change', carregarHorariosDisponiveis);
+    
+    // Adicionar validação do formulário antes do envio
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const data = document.getElementById('data').value;
+        const hora = document.getElementById('hora').value;
+        const funcionario = document.getElementById('funcionario_id').value;
+        const servicoSubtipo = document.getElementById('servico_subtipo_id').value;
+        
+        if (!data || !hora || !funcionario || !servicoSubtipo) {
+            e.preventDefault();
+            alert('Por favor, preencha todos os campos obrigatórios e selecione um horário disponível.');
+            return false;
+        }
+        
+        // Verificar se um horário foi selecionado
+        if (hora === '') {
+            e.preventDefault();
+            alert('Por favor, selecione um horário disponível.');
+            return false;
+        }
+        
+        return true;
+    });
 </script>
 
 <?php

@@ -19,6 +19,7 @@ if (isset($_GET['clear'])) {
 // Processar exclusão de funcionário
 if (isset($_POST['delete_funcionario'])) {
     $funcionario_id = $_POST['funcionario_id'];
+    $confirmar_com_reservas = isset($_POST['confirmar_com_reservas']) ? true : false;
     
     try {
         // Primeiro, verificar se existem reservas associadas
@@ -32,9 +33,14 @@ if (isset($_POST['delete_funcionario'])) {
         $row = $result->fetch_assoc();
         $has_reservas = $row['count'] > 0;
         
-        if ($has_reservas) {
+        if ($has_reservas && !$confirmar_com_reservas) {
             $_SESSION['error'] = "Não é possível excluir este funcionário pois existem reservas associadas a ele.";
         } else {
+            // Se tem reservas e confirmou, deletar reservas antes
+            if ($has_reservas && $confirmar_com_reservas) {
+                $delete_reservas_sql = "DELETE FROM Reserva WHERE funcionario_id = $funcionario_id";
+                $conn->query($delete_reservas_sql);
+            }
             // Excluir o funcionário
             $delete_sql = "DELETE FROM Funcionario WHERE id = $funcionario_id";
             $delete_result = $conn->query($delete_sql);
@@ -44,7 +50,11 @@ if (isset($_POST['delete_funcionario'])) {
             }
             
             if ($conn->affected_rows > 0) {
-                $_SESSION['success'] = "Funcionário excluído com sucesso!";
+                if ($has_reservas && $confirmar_com_reservas) {
+                    $_SESSION['success'] = "Funcionário e todas as reservas associadas excluídos com sucesso!";
+                } else {
+                    $_SESSION['success'] = "Funcionário excluído com sucesso!";
+                }
             } else {
                 $_SESSION['error'] = "Erro ao excluir funcionário.";
             }
@@ -135,9 +145,19 @@ ob_start();
         left: 100%;
         margin-left: 0.5rem; /* Space between button and menu */
     }
+
+    th[data-sortable="true"] .datatable-sorter::before,
+    th[data-sortable="true"] .datatable-sorter::after,
+    th.datatable-ascending .datatable-sorter::before,
+    th.datatable-descending .datatable-sorter::after,
+    a.datatable-sorter::before,
+    a.datatable-sorter::after {
+        color: #fff !important;
+        opacity: 1 !important;
+    }
 </style>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <!-- Filtros -->
     <div class="card shadow-sm mb-4">
         <div class="card-header py-3">
@@ -170,9 +190,9 @@ ob_start();
                             <i class="bi bi-plus-lg me-2"></i>Adicionar Funcionário
                         </a>
                         <?php } ?>
-                        <button class="btn btn-primary btn-lg" onclick="window.print()">
-                            <i class="bi bi-printer me-2"></i>Imprimir
-                        </button>
+                        <a href="gerar_pdf_funcionarios.php" id="pdfLink" class="btn btn-primary btn-lg" target="_blank">
+                            <i class="bi bi-file-earmark-pdf-fill me-2"></i>Gerar PDF
+                        </a>
                         <!-- Dropdown com filtros -->
                         <div class="dropdown dropend">
                             <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
@@ -265,56 +285,38 @@ ob_start();
 <script>
     // Código para mensagens de sucesso e erro
     document.addEventListener('DOMContentLoaded', function() {
-        // Mostrar o efeito de carregamento inicial
-        document.querySelector('.loading-overlay').classList.remove('fade-out');
-        document.querySelector('.loading-overlay').style.display = 'flex';
-        
-        // Esconder o overlay após 1 segundo
-        setTimeout(function() {
-            document.querySelector('.loading-overlay').classList.add('fade-out');
-            setTimeout(function() {
-                document.querySelector('.loading-overlay').style.display = 'none';
-            }, 300);
-        }, 1000);
-
         <?php if ($success_message): ?>
-        // Mostrar mensagem de sucesso após o carregamento
-        setTimeout(function() {
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: '<?php echo addslashes($success_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        }, 1000);
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: '<?php echo addslashes($success_message); ?>',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
         <?php endif; ?>
 
         <?php if ($error_message): ?>
-        // Mostrar mensagem de erro após o carregamento
-        setTimeout(function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: '<?php echo addslashes($error_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        }, 1000);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: '<?php echo addslashes($error_message); ?>',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
         <?php endif; ?>
     });
 </script>
@@ -367,41 +369,154 @@ ob_start();
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const funcionarioId = this.dataset.id;
-                
-                Swal.fire({
-                    title: 'Tem certeza?',
-                    text: "Esta ação não poderá ser revertida!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Sim, excluir!',
-                    cancelButtonText: 'Cancelar'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = 'funcionario.php';
-                        
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'funcionario_id';
-                        input.value = funcionarioId;
-                        
-                        const deleteInput = document.createElement('input');
-                        deleteInput.type = 'hidden';
-                        deleteInput.name = 'delete_funcionario';
-                        deleteInput.value = '1';
-                        
-                        form.appendChild(input);
-                        form.appendChild(deleteInput);
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                });
+                const funcionarioNome = this.closest('tr').querySelector('td').textContent.trim();
+                // Verificar reservas via AJAX
+                fetch('verificar_reservas_funcionario.php?funcionario_id=' + funcionarioId)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.has_reservas) {
+                            mostrarConfirmacaoComReservasFuncionario(funcionarioId, funcionarioNome, data.count);
+                        } else {
+                            mostrarConfirmacaoSimplesFuncionario(funcionarioId, funcionarioNome);
+                        }
+                    })
+                    .catch(() => {
+                        mostrarConfirmacaoSimplesFuncionario(funcionarioId, funcionarioNome);
+                    });
             });
         });
+
+        // Função para modal chamativo igual ao subtipo/serviço/cliente
+        function mostrarConfirmacaoComReservasFuncionario(id, nome, count) {
+            Swal.fire({
+                title: "<div style='color: #d90429; font-size: 2.2rem; font-weight: bold; letter-spacing: 1px; display: flex; flex-direction: column; align-items: center;'>" +
+                    "<span style='font-size: 4rem; display: block; margin-bottom: 10px;'>⚠️</span>" +
+                    "<span style='color: #d90429; text-shadow: 1px 1px 8px #fff, 0 0 8px #d90429;'>ATENÇÃO CRÍTICA!</span>" +
+                "</div>",
+                html: "<div style='text-align: center; margin: 20px 0; font-size: 1.15rem;'>" +
+                    "<div style='color: #d90429; font-size: 1.3rem; font-weight: bold; margin-bottom: 10px;'>🚨 Esta ação é IRREVERSÍVEL! 🚨</div>" +
+                    "<div style='margin-bottom: 15px;'>Deseja eliminar o funcionário <span style='color: #d90429; font-weight: bold;'>&quot;" + nome + "&quot;</span>?</div>" +
+                    "<div style='background: #fff3cd; border: 3px solid #d90429; border-radius: 12px; padding: 15px; margin: 0 auto 15px auto; max-width: 400px; color: #856404; font-weight: bold;'>" +
+                        "<span style='font-size: 1.1rem;'>Este funcionário tem <span style='color: #d90429;'>" + count + "</span> reserva(s) associada(s)!</span><br>" +
+                        "<span style='font-size: 1rem; color: #d90429;'>As alterações são <u>PERMANENTES</u>!</span>" +
+                    "</div>" +
+                    "<div style='background: #f8d7da; border-left: 6px solid #d90429; padding: 10px; border-radius: 8px; color: #721c24; font-size: 1rem;'>" +
+                        "<i class='bi bi-info-circle-fill' style='color: #d90429; margin-right: 8px;'></i>" +
+                        "Ao confirmar, todas as reservas associadas também serão eliminadas." +
+                    "</div>" +
+                "</div>",
+                icon: false,
+                showCancelButton: true,
+                confirmButtonColor: "#d90429",
+                cancelButtonColor: "#6c757d",
+                confirmButtonHtml: "<span style='font-size:1.2rem; font-weight:bold; animation: pulse 1s infinite;'>🚨 SIM, ELIMINAR!</span>",
+                cancelButtonText: "Cancelar",
+                customClass: {
+                    popup: 'swal2-border-strong',
+                    confirmButton: 'swal2-animate-pulse'
+                },
+                buttonsStyling: false,
+                width: '520px',
+                backdrop: 'rgba(217,4,41,0.15)',
+                didOpen: function(el) {
+                    var style = document.createElement('style');
+                    style.innerHTML = "@keyframes pulse {0% { box-shadow: 0 0 0 0 #d9042940; }70% { box-shadow: 0 0 0 10px #d9042900; }100% { box-shadow: 0 0 0 0 #d9042900; }}.swal2-animate-pulse { animation: pulse 1.2s infinite; }.swal2-border-strong { border: 5px solid #d90429 !important; box-shadow: 0 0 30px #d9042940 !important; border-radius: 18px !important; }";
+                    document.head.appendChild(style);
+                }
+            }).then(function(result) {
+                if (result.isConfirmed) {
+                    // Enviar formulário com confirmação extra
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'funcionario.php';
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'funcionario_id';
+                    input.value = id;
+                    const deleteInput = document.createElement('input');
+                    deleteInput.type = 'hidden';
+                    deleteInput.name = 'delete_funcionario';
+                    deleteInput.value = '1';
+                    const confirmInput = document.createElement('input');
+                    confirmInput.type = 'hidden';
+                    confirmInput.name = 'confirmar_com_reservas';
+                    confirmInput.value = '1';
+                    form.appendChild(input);
+                    form.appendChild(deleteInput);
+                    form.appendChild(confirmInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
+        // Modal simples se não houver reservas
+        function mostrarConfirmacaoSimplesFuncionario(id, nome) {
+            Swal.fire({
+                title: 'Tem certeza?',
+                text: "Deseja eliminar o funcionário '" + nome + "'? Esta ação não poderá ser revertida!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sim, eliminar!',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'funcionario.php';
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'funcionario_id';
+                    input.value = id;
+                    const deleteInput = document.createElement('input');
+                    deleteInput.type = 'hidden';
+                    deleteInput.name = 'delete_funcionario';
+                    deleteInput.value = '1';
+                    form.appendChild(input);
+                    form.appendChild(deleteInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        }
     });
+</script>
+
+<script>
+function atualizarLinkPDF() {
+    const search = document.getElementById('searchInput') ? document.getElementById('searchInput').value : '';
+    const params = new URLSearchParams({ search: search });
+    
+    // Adicionar colunas selecionadas
+    const colunasCheckboxes = document.querySelectorAll('input[name="colunas[]"]:checked');
+    const colunas = Array.from(colunasCheckboxes).map(cb => cb.value);
+    if (colunas.length > 0) {
+        params.append('colunas', colunas.join(','));
+    }
+    
+    const pdfLink = document.getElementById('pdfLink');
+    if (pdfLink) {
+        pdfLink.href = 'gerar_pdf_funcionarios.php?' + params.toString();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Atualizar link PDF quando a página carrega
+    atualizarLinkPDF();
+    
+    // Atualizar link PDF quando a pesquisa muda
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', atualizarLinkPDF);
+    }
+    
+    // Atualizar link PDF quando as colunas mudam
+    const colunasCheckboxes = document.querySelectorAll('input[name="colunas[]"]');
+    colunasCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', atualizarLinkPDF);
+    });
+});
 </script>
 
 <?php

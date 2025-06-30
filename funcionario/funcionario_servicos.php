@@ -121,7 +121,7 @@ $conn->close();
 ob_start();
 ?>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     
     <?php if ($mensagem): ?>
         <div class="alert alert-danger"><?php echo htmlspecialchars($mensagem); ?></div>

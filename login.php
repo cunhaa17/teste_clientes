@@ -74,45 +74,69 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: rgba(255, 255, 255, 0.95);
             padding: 40px; 
             border-radius: 24px; 
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2),
+                        0 0 0 1px rgba(255, 255, 255, 0.1); 
             width: 100%;
             max-width: 500px;
             backdrop-filter: blur(10px);
             transform: translateY(0);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .login-container:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
+                        0 0 0 1px rgba(255, 255, 255, 0.2);
         }
 
         .login-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
+            position: relative;
+        }
+
+        .login-header::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-light));
+            border-radius: 3px;
         }
 
         .login-header img {
-            height: 60px;
-            margin-bottom: 20px;
-            transition: transform 0.3s ease;
+            height: 70px;
+            margin-bottom: 25px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
         }
 
         .login-header img:hover {
-            transform: scale(1.05);
+            transform: scale(1.08) rotate(2deg);
+            filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.15));
         }
 
         .login-header h2 {
             color: var(--dark);
             font-weight: 700;
-            margin-bottom: 10px;
-            font-size: 2rem;
+            margin-bottom: 12px;
+            font-size: 2.2rem;
+            background: linear-gradient(45deg, var(--dark), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .login-header p {
             color: var(--tertiary);
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             margin-bottom: 0;
+            opacity: 0.9;
+            letter-spacing: 0.3px;
         }
 
         .form-floating {
@@ -120,25 +144,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             position: relative;
         }
 
+        .form-floating > .form-control {
+            padding: 1.2rem 0.75rem;
+            height: calc(3.8rem + 2px);
+            font-size: 1.05rem;
+        }
+
+        .form-floating > label {
+            padding: 1.2rem 0.75rem;
+            font-size: 1.05rem;
+            color: var(--tertiary);
+        }
+
+        .form-floating > .form-control:focus ~ label,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label {
+            transform: scale(0.85) translateY(-1rem) translateX(0.15rem);
+            color: var(--primary);
+        }
+
         .form-control {
             border: 2px solid var(--secondary);
             border-radius: 12px;
             padding: 12px 15px;
             font-size: 1rem;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
         .form-control:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 0.2rem rgba(163, 106, 7, 0.25);
+            box-shadow: 0 0 0 4px rgba(163, 106, 7, 0.15);
             background: #fff;
-        }
-
-        .form-label {
-            color: var(--dark);
-            font-weight: 500;
-            margin-bottom: 8px;
+            transform: translateY(-1px);
         }
 
         .btn-primary {
@@ -147,9 +185,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 12px;
             padding: 12px 20px;
             font-weight: 600;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 4px 15px rgba(163, 106, 7, 0.2);
         }
 
         .btn-primary::before {
@@ -168,8 +207,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(163, 106, 7, 0.3);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(163, 106, 7, 0.4);
         }
 
         .btn-primary span {
@@ -178,29 +217,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         .erro {
-            background: rgba(220, 53, 69, 0.1);
+            background: rgba(220, 53, 69, 0.08);
             color: #dc3545;
-            padding: 12px;
+            padding: 15px;
             border-radius: 12px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             font-weight: 500;
             text-align: center;
-            animation: shake 0.5s ease-in-out;
+            animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
         }
 
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        .form-floating > .form-control {
-            padding: 1rem 0.75rem;
-            height: calc(3.5rem + 2px);
-        }
-
-        .form-floating > label {
-            padding: 1rem 0.75rem;
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
         }
 
         .input-group-text {
@@ -213,11 +245,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .password-toggle {
             cursor: pointer;
             color: var(--tertiary);
-            transition: color 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.2rem;
+            opacity: 0.7;
         }
 
         .password-toggle:hover {
             color: var(--primary);
+            opacity: 1;
+            transform: scale(1.1);
         }
 
         /* Animação de entrada */

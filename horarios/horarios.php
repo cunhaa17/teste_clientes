@@ -111,41 +111,16 @@ ob_start();
 ?>
 
 <style>
-    /* Loading Overlay */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.9);
-        display: none;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-    }
-
-    .loading-overlay .spinner-border {
-        width: 3rem;
-        height: 3rem;
-    }
-
-    .loading-overlay.fade-out {
-        opacity: 0;
-        transition: opacity 0.3s ease-out;
-    }
+    /* No loading overlay styles */
 </style>
 
-<div class="container py-4">
-    <!-- Loading Overlay -->
-    <div class="loading-overlay">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Carregando...</span>
-        </div>
-    </div>
-    
+<div class="container-fluid py-4">
+    <!-- Conteúdo principal -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <a href="adicionar_horario.php" class="btn btn-success">Adicionar Novo Horário</a>
+        <a href="gerar_pdf_horarios.php" id="pdfLink" class="btn btn-primary btn-lg" target="_blank">
+            <i class="bi bi-file-earmark-pdf-fill me-2"></i>Gerar PDF
+        </a>
     </div>
     
     <!-- Filtros -->
@@ -154,7 +129,7 @@ ob_start();
             <h5>Filtros</h5>
         </div>
         <div class="card-body">
-            <form method="GET" action="horarios.php" class="row g-3">
+            <form method="GET" action="horarios.php" class="row g-3" id="filterForm">
                 <div class="col-md-6">
                     <label for="funcionario_id" class="form-label">Funcionário</label>
                     <select name="funcionario_id" id="funcionario_id" class="form-select">
@@ -264,56 +239,38 @@ include '../includes/layout.php';
 <script>
     // Código para mensagens de sucesso e erro
     document.addEventListener('DOMContentLoaded', function() {
-        // Mostrar o efeito de carregamento inicial
-        document.querySelector('.loading-overlay').classList.remove('fade-out');
-        document.querySelector('.loading-overlay').style.display = 'flex';
-        
-        // Esconder o overlay após 1 segundo
-        setTimeout(function() {
-            document.querySelector('.loading-overlay').classList.add('fade-out');
-            setTimeout(function() {
-                document.querySelector('.loading-overlay').style.display = 'none';
-            }, 300);
-        }, 1000);
-
         <?php if ($success_message): ?>
-        // Mostrar mensagem de sucesso após o carregamento
-        setTimeout(function() {
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: '<?php echo addslashes($success_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        }, 1000);
+        Swal.fire({
+            icon: 'success',
+            title: 'Sucesso!',
+            text: '<?php echo addslashes($success_message); ?>',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
         <?php endif; ?>
 
         <?php if ($error_message): ?>
-        // Mostrar mensagem de erro após o carregamento
-        setTimeout(function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: '<?php echo addslashes($error_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        }, 1000);
+        Swal.fire({
+            icon: 'error',
+            title: 'Erro!',
+            text: '<?php echo addslashes($error_message); ?>',
+            showConfirmButton: true,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#3085d6',
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
         <?php endif; ?>
     });
 </script>
@@ -401,4 +358,40 @@ include '../includes/layout.php';
             });
         });
     });
+</script>
+
+<script>
+function atualizarLinkPDF() {
+    const funcionario_id = document.getElementById('funcionario_id') ? document.getElementById('funcionario_id').value : '';
+    const data = document.getElementById('data') ? document.getElementById('data').value : '';
+    const params = new URLSearchParams();
+    
+    if (funcionario_id && funcionario_id !== '0') {
+        params.append('funcionario_id', funcionario_id);
+    }
+    if (data) {
+        params.append('data', data);
+    }
+    
+    const pdfLink = document.getElementById('pdfLink');
+    if (pdfLink) {
+        pdfLink.href = 'gerar_pdf_horarios.php?' + params.toString();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Atualizar link PDF quando a página carrega
+    atualizarLinkPDF();
+    
+    // Atualizar link PDF quando os filtros mudam
+    const funcionarioSelect = document.getElementById('funcionario_id');
+    const dataInput = document.getElementById('data');
+    
+    if (funcionarioSelect) {
+        funcionarioSelect.addEventListener('change', atualizarLinkPDF);
+    }
+    if (dataInput) {
+        dataInput.addEventListener('change', atualizarLinkPDF);
+    }
+});
 </script>

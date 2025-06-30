@@ -79,6 +79,8 @@ $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
 $data_inicio = isset($_GET['data_inicio']) ? $_GET['data_inicio'] : '';
 $data_fim = isset($_GET['data_fim']) ? $_GET['data_fim'] : '';
 
+$view = isset($_GET['view']) ? $_GET['view'] : 'tabela';
+
 // Colunas e ordenação
 $colunas_selecionadas = isset($_GET['colunas']) 
     ? (is_array($_GET['colunas']) ? $_GET['colunas'] : explode(',', $_GET['colunas'])) 
@@ -201,9 +203,92 @@ ob_start();
     min-width: 350px;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
+
+@media print {
+    /* Ocultar elementos que não devem aparecer na impressão */
+    body > nav,                   /* Assumindo que o seu layout.php tem uma navbar no topo */
+    #layoutSidenav_nav,           /* Assumindo que o seu layout usa um menu lateral com este ID */
+    .card.shadow-sm.mb-4,         /* Card dos Filtros */
+    .modal,
+    .toast-container,
+    .btn,                         /* Oculta todos os botões */
+    .dataTables_wrapper .dataTables_length, /* Oculta o seletor de itens por página da tabela */
+    .dataTables_wrapper .dataTables_filter, /* Oculta a pesquisa do datatables */
+    .dataTables_wrapper .dataTables_info,   /* Oculta a informação de paginação */
+    .dataTables_wrapper .dataTables_paginate, /* Oculta a paginação */
+    #datatablesSimple tfoot,      /* Oculta o rodapé da tabela */
+    #datatablesSimple th:last-child, /* Oculta o cabeçalho da coluna "Ações" */
+    #datatablesSimple td:last-child { /* Oculta a célula da coluna "Ações" */
+        display: none !important;
+    }
+
+    /* Ajustar o corpo da página para impressão */
+    body {
+        background-color: #fff !important;
+    }
+
+    /* Fazer com que o conteúdo principal ocupe toda a largura */
+    #layoutSidenav_content, .container-fluid {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .card-header, .card-body {
+        padding: 10px 0 !important;
+    }
+    
+    .card-header h5 {
+        text-align: center;
+        font-size: 1.5rem;
+        width: 100%;
+    }
+
+    /* Mostrar apenas a visualização ativa */
+    body.view-calendario #tabelaContainer {
+        display: none !important;
+    }
+    body.view-tabela #calendarContainer {
+        display: none !important;
+    }
+    
+    /* Garantir que o container visível é de fato visível */
+    body.view-tabela #tabelaContainer,
+    body.view-calendario #calendarContainer {
+        display: block !important;
+    }
+
+    /* Título para a impressão */
+    .card-header::before {
+        content: "Relatório de Reservas";
+        display: block;
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+    .card-header h5 {
+        display: none; /* Oculta o título original "Reservas" */
+    }
+}
+
+#calendarContainer, #fullcalendar {
+    height: 100% !important;
+    min-height: 600px;
+}
+.card-body.p-4 {
+    height: 80vh;
+    min-height: 600px;
+    display: flex;
+    flex-direction: column;
+}
 </style>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <!-- Modal de Confirmação de Exclusão -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -279,6 +364,7 @@ ob_start();
         </div>
         <div class="card-body">
             <form method="GET" action="reservas.php" id="filterForm" class="row g-3">
+                <input type="hidden" name="view" id="viewInput" value="tabela">
                 <!-- Pesquisa -->
                 <div class="col-md-4">
                     <label for="searchInput" class="form-label fs-5">Pesquisar</label>
@@ -299,17 +385,10 @@ ob_start();
                     </select>
                 </div>
                 
-                <!-- Filtro de Data -->
-                <div class="col-md-2">
-                    <label for="data_inicio" class="form-label fs-5">Data Início</label>
-                    <input type="date" name="data_inicio" id="data_inicio" class="form-control form-control-lg"
-                           value="<?php echo htmlspecialchars($data_inicio); ?>">
-                </div>
-                
-                <div class="col-md-2">
-                    <label for="data_fim" class="form-label fs-5">Data Fim</label>
-                    <input type="date" name="data_fim" id="data_fim" class="form-control form-control-lg"
-                           value="<?php echo htmlspecialchars($data_fim); ?>">
+                <!-- Data Range Melhorado -->
+                <div class="col-md-3" id="filtro-daterange-container">
+                    <label for="daterange" class="form-label fs-5">Intervalo de Datas</label>
+                    <input type="text" name="daterange" id="daterange" class="form-control form-control-lg" value="<?php echo htmlspecialchars(isset($_GET['daterange']) ? $_GET['daterange'] : ''); ?>" autocomplete="off" placeholder="Escolha o intervalo">
                 </div>
                 
                 <!-- Botões -->
@@ -329,9 +408,9 @@ ob_start();
                                 <i class="bi bi-plus-lg me-2"></i>Nova Reserva
                             </a>
                         <?php } ?>
-                        <button class="btn btn-primary btn-lg" onclick="window.print()">
-                            <i class="bi bi-printer me-2"></i>Imprimir
-                        </button>
+                        <a href="gerar_pdf.php" id="pdfLink" class="btn btn-primary btn-lg" target="_blank">
+                            <i class="bi bi-file-earmark-pdf-fill me-2"></i>Gerar PDF
+                        </a>
                         <!-- Dropdown com filtros -->
                         <div class="dropdown dropend">
                             <button class="btn btn-outline-dark btn-lg dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
@@ -384,84 +463,97 @@ ob_start();
     </div>
 
     <div class="card shadow-sm">
-        <div class="card-header py-3">
+        <div class="card-header d-flex justify-content-between align-items-center py-3">
             <h5 class="mb-0">Reservas</h5>
+            <div class="btn-group" role="group">
+                <button id="btnTabela" class="btn btn-outline-primary active" onclick="showTabela()">Tabela</button>
+                <button id="btnCalendario" class="btn btn-outline-primary" onclick="showCalendario()">Calendário</button>
+            </div>
         </div>
         <div class="card-body p-4">
-            <table id="datatablesSimple" class="table table-hover fs-5">
-                <thead class="table-dark">
-                    <?php foreach ($colunas_selecionadas as $coluna): ?>
-                        <th class="py-3">
-                            <?php 
-                                if ($coluna === 'data_reserva') {
-                                    echo 'Data';
-                                } else {
-                                    echo ucfirst(str_replace('_', ' ', $coluna)); 
-                                }
-                            ?>
-                        </th>
-                    <?php endforeach; ?> 
-                    <th class="py-3">Ações</th>
-                </thead>
-                <tfoot>
-                    <?php foreach ($colunas_selecionadas as $coluna): ?>
-                        <th class="py-3">
-                            <?php 
-                                if ($coluna === 'data_reserva') {
-                                    echo 'Data';
-                                } else {
-                                    echo ucfirst(str_replace('_', ' ', $coluna)); 
-                                }
-                            ?>
-                        </th>
-                    <?php endforeach; ?>
-                    <th class="py-3">Ações</th>
-                </tfoot>
-                <tbody>
-                    <?php foreach ($reservas as $reserva): ?>
-                        <tr>
+            <div id="tabelaContainer">
+                <?php if (empty($reservas)) : ?>
+                    <div class="alert alert-warning text-center fs-5 my-4">Nenhuma reserva encontrada para os filtros selecionados.</div>
+                <?php else : ?>
+                    <table id="datatablesSimple" class="table table-hover fs-5">
+                        <thead class="table-dark">
                             <?php foreach ($colunas_selecionadas as $coluna): ?>
-                                <td class="py-3">
+                                <th class="py-3">
                                     <?php 
-                                    switch($coluna) {
-                                        case 'data_reserva':
-                                            echo date('d/m/Y H:i', strtotime($reserva['data_reserva']));
-                                            break;
-                                        case 'cliente':
-                                            echo htmlspecialchars($reserva['cliente_nome'] ?? '');
-                                            break;
-                                        case 'servico':
-                                            echo htmlspecialchars($reserva['servico_nome'] ?? '');
-                                            break;
-                                        case 'subtipo':
-                                            echo htmlspecialchars($reserva['subtipo_nome'] ?? '');
-                                            break;
-                                        case 'funcionario':
-                                            echo htmlspecialchars($reserva['funcionario_nome'] ?? '');
-                                            break;
-                                        case 'observacao':
-                                            echo htmlspecialchars($reserva['observacao'] ?? '');
-                                            break;
-                                        default:
-                                            echo htmlspecialchars($reserva[$coluna] ?? '');
-                                    }
+                                        if ($coluna === 'data_reserva') {
+                                            echo 'Data';
+                                        } else {
+                                            echo ucfirst(str_replace('_', ' ', $coluna)); 
+                                        }
                                     ?>
-                                </td>
+                                </th>
+                            <?php endforeach; ?> 
+                            <th class="py-3">Ações</th>
+                        </thead>
+                        <tfoot>
+                            <?php foreach ($colunas_selecionadas as $coluna): ?>
+                                <th class="py-3">
+                                    <?php 
+                                        if ($coluna === 'data_reserva') {
+                                            echo 'Data';
+                                        } else {
+                                            echo ucfirst(str_replace('_', ' ', $coluna)); 
+                                        }
+                                    ?>
+                                </th>
                             <?php endforeach; ?>
-                            <td class="py-3">
-                                <a href="editar_reserva.php?id=<?php echo urlencode($reserva['id']); ?>" class="btn btn-warning btn-sm">
-                                    <i class="bi bi-pencil-square me-1"></i>Editar
-                                </a>
-                                <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
-                                <button class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $reserva['id']; ?>">
-                                    <i class="bi bi-trash me-1"></i>Eliminar
-                                </button>
-                                <?php } ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                            <th class="py-3">Ações</th>
+                        </tfoot>
+                        <tbody>
+                            <?php foreach ($reservas as $reserva): ?>
+                                <tr>
+                                    <?php foreach ($colunas_selecionadas as $coluna): ?>
+                                        <td class="py-3">
+                                            <?php 
+                                            switch($coluna) {
+                                                case 'data_reserva':
+                                                    echo date('d/m/Y H:i', strtotime($reserva['data_reserva']));
+                                                    break;
+                                                case 'cliente':
+                                                    echo htmlspecialchars($reserva['cliente_nome'] ?? '');
+                                                    break;
+                                                case 'servico':
+                                                    echo htmlspecialchars($reserva['servico_nome'] ?? '');
+                                                    break;
+                                                case 'subtipo':
+                                                    echo htmlspecialchars($reserva['subtipo_nome'] ?? '');
+                                                    break;
+                                                case 'funcionario':
+                                                    echo htmlspecialchars($reserva['funcionario_nome'] ?? '');
+                                                    break;
+                                                case 'observacao':
+                                                    echo htmlspecialchars($reserva['observacao'] ?? '');
+                                                    break;
+                                                default:
+                                                    echo htmlspecialchars($reserva[$coluna] ?? '');
+                                            }
+                                            ?>
+                                        </td>
+                                    <?php endforeach; ?>
+                                    <td class="py-3">
+                                        <a href="editar_reserva.php?id=<?php echo urlencode($reserva['id']); ?>" class="btn btn-warning btn-sm">
+                                            <i class="bi bi-pencil-square me-1"></i>Editar
+                                        </a>
+                                        <?php if ($_SESSION['utilizador_tipo'] == 'admin') { ?>
+                                        <button class="btn btn-danger btn-sm delete-btn" data-id="<?php echo $reserva['id']; ?>">
+                                            <i class="bi bi-trash me-1"></i>Eliminar
+                                        </button>
+                                        <?php } ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+            <div id="calendarContainer" style="display:none;">
+                <div id="fullcalendar"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -469,137 +561,297 @@ ob_start();
 <script src="../assets/js/style.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/umd/simple-datatables.min.js" crossorigin="anonymous"></script>
 
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet" />
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<!-- FullCalendar PT Locale -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/pt.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" rel="stylesheet" />
+
 <script>
-    // Código para mensagens de sucesso e erro
-    document.addEventListener('DOMContentLoaded', function() {
-        // Mostrar o efeito de carregamento inicial
-        document.querySelector('.loading-overlay').classList.remove('fade-out');
-        document.querySelector('.loading-overlay').style.display = 'flex';
+    // =================================================
+    // 1. VARIÁVEIS GLOBAIS E DADOS INICIAIS
+    // =================================================
+    const todasAsReservas = <?php echo json_encode($reservas); ?>;
+    let calendar;
+let calendarRendered = false;
+    let calendarStartDate = null;
+    let calendarEndDate = null;
+
+    // =================================================
+    // 2. FUNÇÕES AUXILIARES
+    // =================================================
+function showTabela() {
+        document.body.classList.remove('view-calendario');
+        document.body.classList.add('view-tabela');
+  document.getElementById('calendarContainer').style.display = 'none';
+        document.getElementById('tabelaContainer').style.display = 'block';
+  document.getElementById('btnTabela').classList.add('active');
+  document.getElementById('btnCalendario').classList.remove('active');
+        document.getElementById('filtro-daterange-container').style.display = 'block';
+  document.getElementById('viewInput').value = 'tabela';
+}
+
+function showCalendario() {
+        document.body.classList.remove('view-tabela');
+        document.body.classList.add('view-calendario');
+        document.getElementById('calendarContainer').style.display = 'block';
+  document.getElementById('tabelaContainer').style.display = 'none';
+  document.getElementById('btnTabela').classList.remove('active');
+  document.getElementById('btnCalendario').classList.add('active');
+  document.getElementById('filtro-daterange-container').style.display = 'none';
+        document.getElementById('viewInput').value = 'calendario';
         
-        // Esconder o overlay após 1 segundo
-        setTimeout(function() {
-            document.querySelector('.loading-overlay').classList.add('fade-out');
-            setTimeout(function() {
-                document.querySelector('.loading-overlay').style.display = 'none';
-            }, 300);
-        }, 1000);
+  setTimeout(function() {
+    if (!calendarRendered) {
+      calendar.render();
+      calendarRendered = true;
+    } else {
+      calendar.updateSize();
+    }
+  }, 10);
+}
 
-        <?php if ($success_message): ?>
-        // Mostrar mensagem de sucesso após o carregamento
-        setTimeout(function() {
-            Swal.fire({
-                icon: 'success',
-                title: 'Sucesso!',
-                text: '<?php echo addslashes($success_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
+function mapReservasToEvents(reservas) {
+        // Filtrar apenas reservas confirmadas e concluídas para o calendário
+        const reservasAtivas = reservas.filter(r => r.status === 'confirmada' || r.status === 'concluída');
+        
+        return reservasAtivas.map(r => {
+            // Adiciona 30 minutos à data/hora de início para o 'end'
+            const startDate = new Date(r.data_reserva);
+            const endDate = new Date(startDate.getTime() + 30 * 60000); // 30 minutos
+
+            // Definir cor baseada no serviço
+            let color;
+            switch(r.servico_nome.toLowerCase()) {
+                case 'massagem':
+                    color = '#28a745'; // Verde
+                    break;
+                case 'barbearia':
+                    color = '#007bff'; // Azul
+                    break;
+                case 'cabeleireiro':
+                    color = '#ffc107'; // Amarelo
+                    break;
+                case 'depilação':
+                    color = '#dc3545'; // Vermelho
+                    break;
+                case 'estética avançada':
+                    color = '#6f42c1'; // Roxo
+                    break;
+                case 'manicure/pedicure':
+                    color = '#fd7e14'; // Laranja
+                    break;
+                case 'microblading/shading':
+                    color = '#e83e8c'; // Rosa
+                    break;
+                default:
+                    color = '#6c757d'; // Cinza para outros serviços
+            }
+
+            return {
+    id: r.id,
+    title: r.cliente_nome + ' - ' + r.servico_nome,
+    start: r.data_reserva,
+                end: endDate.toISOString().slice(0, 19), // formato 'YYYY-MM-DDTHH:MM:SS'
+    extendedProps: {
+      status: r.status,
+      funcionario: r.funcionario_nome,
+      subtipo: r.subtipo_nome,
+      observacao: r.observacao
+    },
+    color: color
+            };
+        });
+}
+
+function filterReservasBySearch(reservas, searchTerm) {
+    if (!searchTerm) {
+        // Se não há termo de pesquisa, retorna apenas reservas ativas (confirmadas e concluídas)
+        return reservas.filter(r => r.status === 'confirmada' || r.status === 'concluída');
+    }
+    
+    searchTerm = searchTerm.toLowerCase();
+    return reservas.filter(r =>
+        // Aplicar filtro de status primeiro (apenas confirmadas e concluídas)
+        (r.status === 'confirmada' || r.status === 'concluída') &&
+        // Depois aplicar filtro de pesquisa
+        ((r.cliente_nome && r.cliente_nome.toLowerCase().includes(searchTerm)) ||
+        (r.servico_nome && r.servico_nome.toLowerCase().includes(searchTerm)) ||
+        (r.subtipo_nome && r.subtipo_nome.toLowerCase().includes(searchTerm)) ||
+        (r.funcionario_nome && r.funcionario_nome.toLowerCase().includes(searchTerm)))
+    );
+}
+
+function updateCalendarEvents(filteredReservas) {
+        if (calendar) {
+    calendar.removeAllEvents();
+            calendar.addEventSource(mapReservasToEvents(filteredReservas));
+        }
+    }
+
+    function atualizarLinkPDF() {
+        const search = document.getElementById('searchInput').value;
+        const status = document.getElementById('status').value;
+        const view = document.getElementById('viewInput').value;
+        let data_inicio = '';
+        let data_fim = '';
+
+        if (view === 'calendario') {
+            data_inicio = calendarStartDate;
+            data_fim = calendarEndDate;
+
+            // Se for vista de dia, força as datas a serem iguais
+            if (calendar && calendar.view && calendar.view.type === 'timeGridDay') {
+                data_inicio = calendarStartDate;
+                data_fim = calendarStartDate;
+            }
+        } else {
+            const daterange = document.getElementById('daterange').value;
+            if (daterange) {
+                const dates = daterange.split(' até ');
+                if (dates.length === 2) {
+                    data_inicio = dates[0].trim();
+                    data_fim = dates[1].trim();
                 }
-            });
-        }, 1000);
-        <?php endif; ?>
-
-        <?php if ($error_message): ?>
-        // Mostrar mensagem de erro após o carregamento
-        setTimeout(function() {
-            Swal.fire({
-                icon: 'error',
-                title: 'Erro!',
-                text: '<?php echo addslashes($error_message); ?>',
-                showConfirmButton: true,
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#3085d6',
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-        }, 1000);
-        <?php endif; ?>
-    });
-</script>
-
-<script>
-    // Código para DataTables e outras funcionalidades
-    window.addEventListener('DOMContentLoaded', event => {
-        const datatablesSimple = document.getElementById('datatablesSimple');
-        let dataTable;
-        if (datatablesSimple) {
-            dataTable = new simpleDatatables.DataTable(datatablesSimple, {
-                searchable: false,
-                perPage: 10,
-                perPageSelect: [10, 25, 50, 100],
-                labels: {
-                    placeholder: "Pesquisar...",
-                    perPage: "Itens por página",
-                    noRows: "Nenhuma reserva encontrada",
-                    info: "Mostrando {start} até {end} de {rows} reservas",
-                    noResults: "Nenhum resultado encontrado para {query}"
-                }
-            });
-
-            datatablesSimple.style.opacity = '1';
+            }
         }
 
-        // Handle column selection checkboxes
-        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                const form = document.getElementById('filterForm');
-                form.submit();
-            });
+        // Troca as datas se estiverem invertidas
+        if (data_inicio && data_fim && data_inicio > data_fim) {
+            const temp = data_inicio;
+            data_inicio = data_fim;
+            data_fim = temp;
+        }
+
+        const params = new URLSearchParams({
+            view: view,
+            search: search,
+            status: status,
+            data_inicio: data_inicio || '',
+            data_fim: data_fim || ''
         });
 
-        // Add real-time search functionality
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            let searchTimeout;
-            searchInput.addEventListener('input', function() {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    if (dataTable) {
-                        dataTable.search(this.value);
-                    }
-                }, 300);
+        const pdfLink = document.getElementById('pdfLink');
+        if (pdfLink) {
+            pdfLink.href = 'gerar_pdf.php?' + params.toString();
+}
+    }
+
+    // ===============================================================
+    // 3. PONTO DE ENTRADA PRINCIPAL - DOMContentLoaded
+    // ===============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- INICIALIZAÇÃO DE ALERTAS E TOASTS ---
+        <?php if ($success_message): ?>
+        Swal.fire({
+            icon: 'success', title: 'Sucesso!', text: '<?php echo addslashes($success_message); ?>',
+            timer: 3000, timerProgressBar: true
+        });
+        <?php endif; ?>
+        <?php if ($error_message): ?>
+        Swal.fire({
+            icon: 'error', title: 'Erro!', text: '<?php echo addslashes($error_message); ?>',
+            timer: 3000, timerProgressBar: true
+        });
+        <?php endif; ?>
+
+        // --- INICIALIZAÇÃO DA TABELA ---
+        const datatablesSimple = document.getElementById('datatablesSimple');
+        if (datatablesSimple) {
+            new simpleDatatables.DataTable(datatablesSimple, {
+                searchable: false, perPage: 10,
+                labels: {
+                    placeholder: "Pesquisar...", perPage: "Itens por página",
+                    noRows: "Nenhuma reserva encontrada", info: "Mostrando {start} até {end} de {rows} reservas"
+                }
             });
         }
 
-        // Handle delete buttons
+        // --- INICIALIZAÇÃO DO FILTRO DE DATAS (DATERANGEPICKER) ---
+  $('#daterange').daterangepicker({
+    locale: {
+                format: 'YYYY-MM-DD', separator: ' até ', applyLabel: 'Aplicar', cancelLabel: 'Cancelar',
+      monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+    },
+    autoUpdateInput: false
+        }).on('apply.daterangepicker', function(ev, picker) {
+    $(this).val(picker.startDate.format('YYYY-MM-DD') + ' até ' + picker.endDate.format('YYYY-MM-DD'));
+            atualizarLinkPDF(); // Atualiza o link quando a data é aplicada
+        }).on('cancel.daterangepicker', function(ev, picker) {
+    $(this).val('');
+  });
+
+        // --- INICIALIZAÇÃO DO CALENDÁRIO (FULLCALENDAR) ---
+        const calendarEl = document.getElementById('fullcalendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            locale: 'pt',
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
+            height: '100%',
+            contentHeight: 'auto',
+            expandRows: true,
+            allDaySlot: false,
+            slotMinTime: '09:00:00', // Start at 9:00
+            slotMaxTime: '18:30:00', // End at 18:30
+            events: mapReservasToEvents(todasAsReservas),
+            datesSet: function(dateInfo) {
+                calendarStartDate = dateInfo.startStr.substring(0, 10);
+                let endDate = new Date(dateInfo.endStr);
+                endDate.setDate(endDate.getDate() - 1);
+                calendarEndDate = endDate.toISOString().substring(0, 10);
+                atualizarLinkPDF();
+            },
+            eventClick: function(info) {
+                const props = info.event.extendedProps;
+                Swal.fire({
+                    title: info.event.title,
+                    html: `<b>Status:</b> ${props.status}<br><b>Funcionário:</b> ${props.funcionario}<br><b>Observação:</b> ${props.observacao || 'N/A'}`,
+                    icon: 'info'
+                });
+            }
+        });
+
+        // --- CONFIGURAÇÃO DOS EVENT LISTENERS ---
+        document.getElementById('searchInput').addEventListener('input', function() {
+            if (document.getElementById('viewInput').value === 'calendario') {
+                const filtered = filterReservasBySearch(todasAsReservas, this.value);
+                updateCalendarEvents(filtered);
+            }
+            // A pesquisa da tabela é tratada pelo simple-datatables e pelo submit do form
+            atualizarLinkPDF();
+    });
+
+        document.getElementById('status').addEventListener('change', atualizarLinkPDF);
+        document.getElementById('btnTabela').addEventListener('click', () => { showTabela(); atualizarLinkPDF(); });
+        document.getElementById('btnCalendario').addEventListener('click', () => { showCalendario(); atualizarLinkPDF(); });
+
         document.querySelectorAll('.delete-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const reservaId = this.dataset.id;
-                
                 Swal.fire({
-                    title: 'Tem certeza?',
-                    text: "Esta ação não poderá ser revertida!",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Sim, excluir!',
-                    cancelButtonText: 'Cancelar'
+                    title: 'Tem certeza?', text: "Esta ação não poderá ser revertida!", icon: 'warning',
+                    showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sim, excluir!', cancelButtonText: 'Cancelar'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         const form = document.createElement('form');
                         form.method = 'POST';
                         form.action = 'reservas.php';
-                        
                         const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'reserva_id';
-                        input.value = reservaId;
-                        
+                        input.type = 'hidden'; input.name = 'reserva_id'; input.value = reservaId;
                         const deleteInput = document.createElement('input');
-                        deleteInput.type = 'hidden';
-                        deleteInput.name = 'delete_reserva';
-                        deleteInput.value = '1';
-                        
+                        deleteInput.type = 'hidden'; deleteInput.name = 'delete_reserva'; deleteInput.value = '1';
                         form.appendChild(input);
                         form.appendChild(deleteInput);
                         document.body.appendChild(form);
@@ -608,11 +860,27 @@ ob_start();
                 });
             });
         });
-    });
+
+        document.querySelectorAll('.dropdown-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                document.getElementById('filterForm').submit();
+            });
+        });
+
+        // --- ESTADO INICIAL DA PÁGINA ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const view = urlParams.get('view') || 'tabela';
+        if (view === 'calendario') {
+            showCalendario();
+        } else {
+            showTabela();
+  }
+        atualizarLinkPDF(); // Garante que o link está correto no carregamento inicial
+});
 </script>
 
 <?php
-$conn->close(); // Close the database connection after the query and fetching
+$conn->close();
 $content = ob_get_clean();
 include '../includes/layout.php';
 ?>

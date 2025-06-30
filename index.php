@@ -37,7 +37,8 @@ $query_reservas = "SELECT cliente.nome AS cliente,
                    JOIN servico ON servico_subtipo.servico_id = servico.id 
                    LEFT JOIN reserva_funcionario ON reserva.id = reserva_funcionario.r_id
                    LEFT JOIN funcionario ON reserva_funcionario.f_id = funcionario.id
-                   WHERE reserva.data_reserva >= CURRENT_DATE()
+                   WHERE reserva.data_reserva > NOW()
+                   AND reserva.status != 'cancelada'
                    ORDER BY reserva.data_reserva ASC LIMIT 5";
 $query_funcionarios_online = "SELECT nome FROM funcionario WHERE id IN (SELECT f_id FROM reserva_funcionario)";
 $query_faturamento = "SELECT 

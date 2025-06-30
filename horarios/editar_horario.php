@@ -151,7 +151,7 @@ $hora_fim_tarde = date('H:i', strtotime($horario['tarde_fim']));
 ob_start();
 ?>
 
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Editar Horário</h1>
         <a href="horarios.php" class="btn btn-secondary">
